@@ -1,8 +1,10 @@
-import React from 'react';
-import { View, FlatList, StyleSheet, Text, TouchableOpacity, Image } from 'react-native';
-import { Answer } from '../types';
-import { toggleReaction, deleteAnswer } from '../lib/answer';
+import React, { useState } from 'react';
+import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View, TextInput, ActivityIndicator } from 'react-native';
 import { theme } from '../constants/theme';
+import { toggleReaction, updateAnswer } from '../lib/answer';
+import { Avatar } from './Avatar';
+import { Ionicons } from '@expo/vector-icons';
+import { Answer } from '../types';
 
 interface AnswerFeedProps {
   answers: Answer[];
@@ -15,20 +17,15 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId }
   const myAnswer = answers.find(a => a.userId === currentUserId);
   const otherAnswers = answers.filter(a => a.userId !== currentUserId);
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+
   const handleReaction = async (answerId: string, emoji: string, hasReacted: boolean) => {
     try {
       await toggleReaction(answerId, currentUserId, emoji, !hasReacted);
     } catch (error) {
       console.error('Error toggling reaction:', error);
-    }
-  };
-
-  const handleDelete = async (answerId: string) => {
-    try {
-      // TODO: Add confirmation dialog in real app
-      await deleteAnswer(answerId);
-    } catch (error) {
-      console.error('Error deleting answer:', error);
     }
   };
 
@@ -68,28 +65,123 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId }
   const renderItem = ({ item }: { item: Answer }) => {
     const isMe = item.userId === currentUserId;
     
+    if (isMe && isEditing) {
+      const maxLength = 200;
+      const currentLength = editContent.length;
+      const isValidLength = currentLength >= 1 && currentLength <= maxLength;
+      const progressColor = isValidLength ? theme.colors.success : theme.colors.error;
+      const progressWidth = `${Math.min((currentLength / maxLength) * 100, 100)}%`;
+
+      const handleSave = async () => {
+        if (!isValidLength || isUpdating) return;
+        setIsUpdating(true);
+        try {
+          await updateAnswer(item.id, editContent);
+          setIsEditing(false);
+        } catch (error) {
+          console.error('Error updating answer:', error);
+        } finally {
+          setIsUpdating(false);
+        }
+      };
+
+      return (
+        <View style={[styles.card, styles.myCard]}>
+          <View style={styles.header}>
+            <View style={styles.userInfo}>
+              <View style={styles.avatarContainer}>
+                <Avatar 
+                  profileImage={item.profileImage || item.userProfile?.profileImage} 
+                  nickname={item.nickname || item.userProfile?.nickname}
+                  size={40} 
+                />
+              </View>
+              <View>
+                <Text style={styles.nickname}>{item.nickname || item.userProfile?.nickname || '익명'}</Text>
+                <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
+              </View>
+            </View>
+
+            <View style={styles.actionButtons}>
+              <TouchableOpacity 
+                onPress={() => setIsEditing(false)}
+                disabled={isUpdating}
+              >
+                <Ionicons name="close-circle" size={24} color={theme.colors.textMuted} />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={handleSave}
+                disabled={!isValidLength || isUpdating}
+              >
+                {isUpdating ? (
+                  <ActivityIndicator size="small" color={theme.colors.accent} />
+                ) : (
+                  <Ionicons 
+                    name="checkmark-circle" 
+                    size={24} 
+                    color={isValidLength ? theme.colors.accent : theme.colors.gray[300]} 
+                  />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+          
+          <View style={styles.editInputContainer}>
+            <TextInput
+              style={styles.editInput}
+              multiline
+              value={editContent}
+              onChangeText={setEditContent}
+              maxLength={maxLength}
+              textAlignVertical="top"
+              autoFocus
+              placeholderTextColor={theme.colors.textMuted}
+            />
+            
+            <View style={styles.editFooter}>
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBarBackground}>
+                  <View 
+                    style={[
+                      styles.progressBarFill, 
+                      { width: progressWidth as any, backgroundColor: progressColor }
+                    ]} 
+                  />
+                </View>
+                <Text style={[styles.lengthText, { color: progressColor }]}>
+                  {currentLength} / {maxLength}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
     return (
       <View style={[styles.card, isMe && styles.myCard]}>
         <View style={styles.header}>
           <View style={styles.userInfo}>
-            {item.userProfile?.profileImage ? (
-              <Image source={{ uri: item.userProfile.profileImage }} style={styles.avatar} />
-            ) : (
-              <View style={styles.defaultAvatar} />
-            )}
+            <View style={styles.avatarContainer}>
+              <Avatar 
+                profileImage={item.profileImage || item.userProfile?.profileImage} 
+                nickname={item.nickname || item.userProfile?.nickname}
+                size={40} 
+              />
+            </View>
             <View>
-              <Text style={styles.nickname}>{item.userProfile?.nickname || '익명'}</Text>
+              <Text style={styles.nickname}>{item.nickname || item.userProfile?.nickname || '익명'}</Text>
               <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
             </View>
           </View>
           
           {isMe && (
             <View style={styles.actionButtons}>
-              <TouchableOpacity onPress={() => {/* TODO: Implement edit */}}>
-                <Text style={styles.actionText}>수정</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDelete(item.id)}>
-                <Text style={[styles.actionText, styles.deleteText]}>삭제</Text>
+              <TouchableOpacity onPress={() => {
+                setEditContent(item.content);
+                setIsEditing(true);
+              }}>
+                <Ionicons name="pencil-outline" size={18} color={theme.colors.textMuted} />
               </TouchableOpacity>
             </View>
           )}
@@ -139,17 +231,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  defaultAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.gray[200],
+  avatarContainer: {
     marginRight: 12,
   },
   nickname: {
@@ -167,6 +249,7 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     color: theme.colors.textPrimary,
     marginBottom: 20,
+    ...theme.typography.koreanText,
   },
   reactionContainer: {
     flexDirection: 'row',
@@ -202,11 +285,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  actionText: {
-    fontSize: 13,
-    color: theme.colors.textSecondary,
+  editInputContainer: {
+    marginTop: 8,
   },
-  deleteText: {
-    color: theme.colors.error,
+  editInput: {
+    backgroundColor: theme.colors.surfaceLight,
+    borderRadius: 12,
+    padding: 12,
+    minHeight: 100,
+    fontSize: 16,
+    lineHeight: 24,
+    color: theme.colors.textPrimary,
+    borderWidth: 1,
+    borderColor: theme.colors.accent,
+    ...theme.typography.koreanText,
+  },
+  editFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  progressContainer: {
+    flex: 1,
+    marginRight: 16,
+  },
+  progressBarBackground: {
+    height: 4,
+    backgroundColor: theme.colors.gray[200],
+    borderRadius: 2,
+    marginBottom: 6,
+  },
+  progressBarFill: {
+    height: 4,
+    borderRadius: 2,
+  },
+  lengthText: {
+    fontSize: 12,
+    textAlign: 'right',
   },
 });

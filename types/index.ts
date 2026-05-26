@@ -21,6 +21,8 @@ export interface Answer {
   groupId: string;
   userId: string;
   content: string;
+  nickname?: string;
+  profileImage?: string;
   reactions: {
     [emoji: string]: string[]; // userId 배열
   };

@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, Image, TouchableOpacity, TextInput, Alert, Scro
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, auth } from '../../lib/firebase';
+import { Avatar } from '../../components/Avatar';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import * as ImagePicker from 'expo-image-picker';
@@ -121,13 +122,11 @@ export default function MyScreen() {
       <View style={styles.profileSection}>
         <TouchableOpacity onPress={pickImage}>
           <View style={styles.imageContainer}>
-            {profile.profileImage ? (
-              <Image source={{ uri: profile.profileImage }} style={styles.profileImage} />
-            ) : (
-              <View style={[styles.profileImage, styles.placeholderImage]}>
-                <Ionicons name="person" size={40} color={theme.colors.textMuted} />
-              </View>
-            )}
+            <Avatar 
+              profileImage={profile.profileImage} 
+              nickname={profile.nickname}
+              size={100} 
+            />
             <View style={styles.editIconBadge}>
               <Ionicons name="camera" size={12} color="#fff" />
             </View>
@@ -265,16 +264,6 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     marginBottom: 16,
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  placeholderImage: {
-    backgroundColor: theme.colors.surfaceLight,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   editIconBadge: {
     position: 'absolute',

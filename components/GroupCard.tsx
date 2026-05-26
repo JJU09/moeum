@@ -87,6 +87,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.textPrimary,
     marginBottom: 6,
+    ...theme.typography.koreanText,
   },
   statsContainer: {
     flexDirection: 'row',

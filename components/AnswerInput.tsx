@@ -12,7 +12,7 @@ export const AnswerInput: React.FC<AnswerInputProps> = ({ onSubmit, answerCount 
   const maxLength = 200;
   const currentLength = content.length;
   
-  const isValidLength = currentLength >= 150 && currentLength <= maxLength;
+  const isValidLength = currentLength >= 1 && currentLength <= maxLength;
   const progressColor = isValidLength ? theme.colors.success : theme.colors.error;
   const progressWidth = `${Math.min((currentLength / maxLength) * 100, 100)}%`;
 
@@ -32,7 +32,7 @@ export const AnswerInput: React.FC<AnswerInputProps> = ({ onSubmit, answerCount 
         <TextInput
           style={styles.input}
           multiline
-          placeholder="오늘의 답변을 남겨주세요 (150~200자)"
+          placeholder="오늘의 답변을 남겨주세요 (1~200자)"
           placeholderTextColor={theme.colors.textMuted}
           value={content}
           onChangeText={setContent}
@@ -93,6 +93,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: theme.colors.textPrimary,
+    ...theme.typography.koreanText,
   },
   footer: {
     flexDirection: 'row',

@@ -30,23 +30,30 @@ export default function GroupScreen() {
     try {
       const newGroupId = await createGroup(newGroupName.trim(), user!.uid);
       
-      // 모달이 닫히는 애니메이션 도중 Alert를 띄우면 무시되는 버그 방지를 위해 Alert 확인 후 모달을 닫습니다.
-      Alert.alert('성공', '그룹이 생성되었습니다.', [
-        {
-          text: '확인',
-          onPress: () => {
-            setCreateModalVisible(false);
-            setNewGroupName('');
-            setSelectedGroupId(newGroupId);
-            router.push('/(tabs)');
+      // 1. 제출 상태 해제
+      setIsSubmitting(false);
+      // 2. 모달 닫기
+      setCreateModalVisible(false);
+      // 3. 입력값 초기화
+      setNewGroupName('');
+      // 4. 새 그룹 선택
+      setSelectedGroupId(newGroupId);
+      
+      // 5. 모달 닫힘 애니메이션 후 라우팅을 위해 setTimeout 사용
+      setTimeout(() => {
+        Alert.alert('성공', '그룹이 생성되었습니다.', [
+          {
+            text: '확인',
+            onPress: () => {
+              router.push('/(tabs)');
+            }
           }
-        }
-      ]);
+        ]);
+      }, 300);
     } catch (error) {
       console.error('Group create error:', error);
-      Alert.alert('오류', '그룹 생성에 실패했습니다.');
-    } finally {
       setIsSubmitting(false);
+      Alert.alert('오류', '그룹 생성에 실패했습니다.');
     }
   };
 
@@ -60,23 +67,30 @@ export default function GroupScreen() {
     try {
       const joinedGroupId = await joinGroupWithCode(inviteCode.trim(), user!.uid);
       
-      // 모달이 닫히는 애니메이션 도중 Alert를 띄우면 무시되는 버그 방지
-      Alert.alert('성공', '그룹에 참여했습니다.', [
-        {
-          text: '확인',
-          onPress: () => {
-            setJoinModalVisible(false);
-            setInviteCode('');
-            setSelectedGroupId(joinedGroupId);
-            router.push('/(tabs)');
+      // 1. 제출 상태 해제
+      setIsSubmitting(false);
+      // 2. 모달 닫기
+      setJoinModalVisible(false);
+      // 3. 입력값 초기화
+      setInviteCode('');
+      // 4. 참여한 그룹 선택
+      setSelectedGroupId(joinedGroupId);
+      
+      // 5. 모달 닫힘 애니메이션 후 라우팅을 위해 setTimeout 사용
+      setTimeout(() => {
+        Alert.alert('성공', '그룹에 참여했습니다.', [
+          {
+            text: '확인',
+            onPress: () => {
+              router.push('/(tabs)');
+            }
           }
-        }
-      ]);
+        ]);
+      }, 300);
     } catch (error: any) {
       console.error('Group join error:', error);
-      Alert.alert('오류', error.message || '그룹 참여에 실패했습니다.');
-    } finally {
       setIsSubmitting(false);
+      Alert.alert('오류', error.message || '그룹 참여에 실패했습니다.');
     }
   };
 

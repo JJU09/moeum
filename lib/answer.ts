@@ -4,7 +4,6 @@ import {
   doc, 
   addDoc, 
   updateDoc, 
-  deleteDoc,
   query, 
   where, 
   getDocs,
@@ -37,10 +36,17 @@ export const submitAnswer = async (
     throw new Error('이미 답변을 작성했습니다.');
   }
 
+  // Update streak and badges + get nickname
+  const userRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(userRef);
+  const userData = userSnap.exists() ? userSnap.data() : null;
+
   const answerData = {
     groupId,
     questionId,
     userId,
+    nickname: userData?.nickname || '',
+    profileImage: userData?.profileImage || null,
     content,
     reactions: {},
     createdAt: serverTimestamp(),
@@ -48,11 +54,7 @@ export const submitAnswer = async (
 
   const answerRef = await addDoc(collection(db, 'answers'), answerData);
 
-  // Update streak and badges
-  const userRef = doc(db, 'users', userId);
-  const userSnap = await getDoc(userRef);
-  if (userSnap.exists()) {
-    const userData = userSnap.data();
+  if (userSnap.exists() && userData) {
     const today = new Date();
     const todayStr = format(today, 'yyyy-MM-dd');
     const lastDateStr = userData.lastAnsweredDate;
@@ -105,11 +107,6 @@ export const submitAnswer = async (
 export const updateAnswer = async (answerId: string, content: string) => {
   const answerRef = doc(db, 'answers', answerId);
   await updateDoc(answerRef, { content });
-};
-
-export const deleteAnswer = async (answerId: string) => {
-  const answerRef = doc(db, 'answers', answerId);
-  await deleteDoc(answerRef);
 };
 
 export const toggleReaction = async (
