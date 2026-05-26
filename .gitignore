@@ -32,6 +32,7 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
@@ -42,3 +43,20 @@ yarn-error.*
 
 # scripts
 /scripts
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+functions/lib/
+functions/node_modules/
+
+# Firebase 서비스 계정 키
+*serviceAccountKey*.json
+*service-account*.json
+
+# Functions 환경변수
+functions/.env
+functions/.env.local
+functions/.env.*.local
