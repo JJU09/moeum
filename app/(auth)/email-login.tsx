@@ -10,10 +10,12 @@ export default function EmailLoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleLogin = async () => {
+    setErrorMessage('');
     if (!email || !password) {
-      Alert.alert('오류', '이메일과 비밀번호를 입력해주세요.');
+      setErrorMessage('이메일과 비밀번호를 입력해주세요.');
       return;
     }
 
@@ -23,7 +25,17 @@ export default function EmailLoginScreen() {
       // 로그인이 성공하면 _layout.tsx의 리다이렉트 로직에 의해 자동으로 처리됨
     } catch (error: any) {
       console.error(error);
-      Alert.alert('로그인 실패', '이메일 또는 비밀번호가 올바르지 않습니다.');
+      let msg = '로그인 중 오류가 발생했습니다.';
+      if (error.code === 'auth/invalid-credential') {
+        msg = '이메일 또는 비밀번호가 올바르지 않습니다.';
+      } else if (error.code === 'auth/user-not-found') {
+        msg = '존재하지 않는 계정입니다.';
+      } else if (error.code === 'auth/wrong-password') {
+        msg = '비밀번호가 올바르지 않습니다.';
+      } else if (error.code === 'auth/invalid-email') {
+        msg = '올바른 이메일 형식이 아닙니다.';
+      }
+      setErrorMessage(msg);
     } finally {
       setLoading(false);
     }
@@ -37,7 +49,10 @@ export default function EmailLoginScreen() {
           placeholder="이메일"
           placeholderTextColor={theme.colors.textMuted}
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => {
+            setEmail(text);
+            setErrorMessage('');
+          }}
           autoCapitalize="none"
           keyboardType="email-address"
         />
@@ -46,9 +61,15 @@ export default function EmailLoginScreen() {
           placeholder="비밀번호"
           placeholderTextColor={theme.colors.textMuted}
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            setErrorMessage('');
+          }}
           secureTextEntry
         />
+        {errorMessage ? (
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        ) : null}
       </View>
 
       <TouchableOpacity
@@ -115,5 +136,12 @@ const styles = StyleSheet.create({
   signUpLink: {
     color: theme.colors.accent,
     fontWeight: '700',
+  },
+  errorText: {
+    color: theme.colors.error,
+    fontSize: 12,
+    marginTop: -8,
+    marginBottom: 8,
+    marginLeft: 4,
   },
 });

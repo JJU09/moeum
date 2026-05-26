@@ -1,94 +1,106 @@
-# 모음 (Moeum) 앱 실행 가이드
+# 모음 (Moeum)
 
-이 프로젝트는 **Expo (React Native)** 와 **Firebase**를 기반으로 만들어진 모바일 애플리케이션입니다. 
-앱 개발이 처음이신 분들을 위해 프로젝트 설정부터 화면을 확인하는 방법까지 단계별로 안내해 드립니다.
+모음은 가족, 친구, 연인 등 소중한 사람들과 함께 일상을 공유하고 소통할 수 있는 그룹 기반의 질문/답변 플랫폼입니다. 매일 제공되는 질문에 답변하며 서로에 대해 더 깊이 알아갈 수 있습니다.
 
----
+## 🛠 기술 스택
 
-## 1. 사전 준비사항 (필수)
+- **프레임워크**: Expo (v56.0.0), React Native
+- **언어**: TypeScript
+- **백엔드/데이터베이스**: Firebase (Authentication, Firestore, Cloud Functions, Cloud Messaging)
+- **상태 관리/라우팅**: Expo Router
+- **주요 라이브러리**: `@react-native-firebase/*`, `date-fns`, `react-native-calendars`
 
-앱을 실행하기 전에 컴퓨터와 스마트폰에 필요한 프로그램이 설치되어 있어야 합니다.
+## 🚀 시작하기
 
-### PC (개발 컴퓨터) 준비
-1. **Node.js 설치**: [Node.js 공식 홈페이지](https://nodejs.org/)에서 LTS 버전을 다운로드하고 설치합니다. (npm이라는 패키지 관리자가 함께 설치됩니다.)
-2. **코드 에디터 설치**: VS Code (Visual Studio Code) 사용을 권장합니다.
+### 사전 요구사항
+- Node.js 설치 (v18 이상 권장)
+- npm 또는 yarn 패키지 매니저
+- Expo CLI (`npm install -g expo-cli`)
+- Firebase 프로젝트 생성 및 설정 (자세한 내용은 `docs/ENV_SETUP.md` 참고)
 
-### 스마트폰 준비 (실제 폰에서 화면을 볼 때 필요)
-- 아이폰: App Store에서 **Expo Go** 앱 검색 후 설치
-- 안드로이드: Google Play Store에서 **Expo Go** 앱 검색 후 설치
+### 설치 및 실행
 
----
+1. 레포지토리를 클론합니다.
+   ```bash
+   git clone https://github.com/JJU09/moeum.git
+   cd moeum
+   ```
 
-## 2. 프로젝트 초기 설정
+2. 패키지를 설치합니다.
+   ```bash
+   npm install
+   ```
 
-터미널(또는 명령 프롬프트, VS Code의 내장 터미널)을 열고 프로젝트 폴더(`moeum`) 안에서 다음 단계들을 진행하세요.
+3. 환경변수를 설정합니다. (`.env.example`을 복사하여 `.env.local` 생성)
+   ```bash
+   cp .env.example .env.local
+   ```
+   > 환경변수 상세 설정 방법은 `docs/ENV_SETUP.md`를 확인하세요.
 
-### 2-1. 패키지 설치
-앱 실행에 필요한 도구들을 다운로드합니다. 터미널에 아래 명령어를 입력하고 엔터를 누르세요.
+4. 앱을 실행합니다.
+   ```bash
+   npm start
+   # 또는
+   npm run ios
+   npm run android
+   ```
+
+## 📁 프로젝트 구조
+
+```
+moeum/
+├── app/                  # Expo Router 기반의 화면(Screen) 컴포넌트
+│   ├── (auth)/           # 인증 관련 화면 (로그인, 회원가입, 프로필 설정 등)
+│   ├── (tabs)/           # 메인 탭 화면 (홈, 그룹, 내 정보, 기록 등)
+│   ├── archive/          # 아카이브 관련 화면
+│   ├── notices/          # 공지사항 관련 화면
+│   └── support/          # 고객지원 관련 화면
+├── components/           # 재사용 가능한 UI 컴포넌트
+├── constants/            # 테마, 색상 등 상수 정의
+├── contexts/             # React Context API (AuthContext, GroupContext 등)
+├── docs/                 # 프로젝트 문서
+├── functions/            # Firebase Cloud Functions 코드
+├── hooks/                # Custom React Hooks
+├── lib/                  # 비즈니스 로직 및 Firebase 서비스 연동 유틸리티
+├── types/                # TypeScript 타입 정의
+└── assets/               # 이미지, 폰트 등 정적 리소스
+```
+
+## ⚙️ 환경변수 설정 방법
+
+앱 실행 및 배포를 위해 루트 디렉토리의 `.env.local`과 Cloud Functions를 위한 `functions/.env` 설정이 필요합니다. 
+상세한 환경변수 설정 가이드와 Firebase 연동 방법은 [ENV_SETUP.md](./docs/ENV_SETUP.md) 문서를 참고해 주세요.
+
+## 📦 배포 방법
+
+### 1. 앱 배포 (EAS Build)
+Expo Application Services (EAS)를 사용하여 빌드합니다.
+
 ```bash
+# EAS CLI 설치 및 로그인
+npm install -g eas-cli
+eas login
+
+# 프로젝트 설정 (최초 1회)
+eas build:configure
+
+# Android 빌드
+eas build --platform android --profile production
+
+# iOS 빌드
+eas build --platform ios --profile production
+```
+
+### 2. Cloud Functions 배포
+Firebase Cloud Functions를 배포합니다.
+
+```bash
+cd functions
 npm install
+npm run build
+firebase deploy --only functions
 ```
 
-### 2-2. 환경 변수(Firebase) 설정
-앱이 데이터베이스(Firebase)와 연결되려면 인증 정보가 필요합니다.
-1. 프로젝트 폴더 내에 있는 `.env.example` 파일을 복사하여 `.env` 라는 이름으로 새 파일을 만듭니다.
-2. `.env` 파일을 열고, 준비된 Firebase 설정값으로 내용을 채워넣습니다. (값이 없다면 일단 비워두셔도 화면을 띄울 수는 있습니다만, 데이터 관련 기능은 작동하지 않습니다.)
-
 ---
 
-## 3. 앱 실행하기
-
-모든 준비가 끝났습니다! 아래 명령어를 입력하여 앱 서버를 실행합니다.
-
-```bash
-npm start
-```
-명령어를 실행하면 터미널에 **큰 QR 코드**와 함께 여러 메뉴가 나타납니다.
-
----
-
-## 4. 앱 화면(뷰) 확인하는 방법
-
-앱 화면을 확인하는 방법은 크게 3가지가 있습니다. 가장 쉬운 첫 번째 방법을 추천합니다.
-
-### 방법 1. 내 스마트폰에서 직접 확인하기 (가장 추천)
-가장 정확하고 쉽게 앱을 테스트할 수 있는 방법입니다.
-
-1. **아이폰(iOS) 사용자**: 
-   - 기본 '카메라' 앱을 켭니다.
-   - 터미널에 띄워진 **QR 코드**를 비춥니다.
-   - 화면에 나타나는 'Expo Go에서 열기' 링크를 누릅니다.
-
-2. **안드로이드 사용자**:
-   - 설치해둔 **Expo Go** 앱을 켭니다.
-   - 앱 내의 **"Scan QR Code"** 버튼을 누릅니다.
-   - 터미널에 띄워진 **QR 코드**를 스캔합니다.
-
-> **주의사항**: 컴퓨터와 스마트폰이 **같은 와이파이(Wi-Fi) 네트워크**에 연결되어 있어야 합니다!
-
-### 방법 2. 웹 브라우저에서 확인하기 (가장 빠름)
-스마트폰 없이 컴퓨터 모니터에서 바로 앱 화면을 보고 싶을 때 사용합니다.
-- 터미널에서 앱을 실행한 상태(`npm start`)에서 키보드의 **`w`** 키를 누릅니다.
-- 잠시 후 인터넷 브라우저 창이 열리면서 앱 화면이 나타납니다.
-- 크롬 브라우저 기준: `F12` 키를 눌러 개발자 도구를 열고, 좌측 상단의 '기기 툴바 전환(스마트폰 아이콘)'을 누르면 모바일 화면 비율로 볼 수 있습니다.
-
-### 방법 3. 컴퓨터의 가상 폰(시뮬레이터)에서 확인하기
-컴퓨터 화면에 가상의 스마트폰을 띄우는 방법입니다. (단, 초기 설치 용량이 크고 설정이 복잡할 수 있습니다.)
-- **아이폰 화면 보기**: Mac 컴퓨터에서 Xcode를 설치한 후, 터미널에서 **`i`** 키를 누릅니다.
-- **안드로이드 화면 보기**: Android Studio를 설치하고 에뮬레이터를 세팅한 후, 터미널에서 **`a`** 키를 누릅니다.
-
----
-
----
-
-## 5. 자주 발생하는 문제 (Troubleshooting)
-
-### Q. 스마트폰에서 "Project is incompatible with this version of Expo Go" 에러가 나요.
-A. 설치하신 Expo Go 앱의 버전이 이 프로젝트가 요구하는 버전(Expo 56)보다 낮아서 발생하는 문제입니다.
-- **해결책**: 스마트폰의 앱스토어(Play Store 또는 App Store)에 들어가서 **Expo Go**를 검색 후 최신 버전으로 **업데이트(또는 재설치)** 해주세요.
-- **빠른 대안**: 당장 스마트폰 업데이트가 어렵다면, 터미널에서 **`w`** 키를 눌러 **웹 브라우저(방법 2)** 로 앱 화면을 먼저 확인하실 수 있습니다!
-
----
-
-## 6. 앱 종료하기
-개발이나 확인을 마치고 서버를 끄고 싶을 때는 터미널 창을 선택한 상태에서 **`Ctrl + C`** 를 누르시면 됩니다.
+*자세한 기능 설명은 [FEATURES.md](./docs/FEATURES.md)를, 데이터베이스 구조는 [DATABASE.md](./docs/DATABASE.md)를 참고하세요.*

@@ -1,19 +1,24 @@
-{
+export default {
   "expo": {
     "name": "moeum",
     "slug": "moeum",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/icon.png",
     "scheme": "moeum",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.moeum.app",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "icon": "./assets/icon.png"
     },
     "android": {
+      "package": "com.moeum.app",
+      "googleServicesFile": process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundColor": "#6D28D9",
+        "foregroundImage": "./assets/icon.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -26,6 +31,8 @@
     },
     "plugins": [
       "expo-router",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
       [
         "expo-splash-screen",
         {
@@ -37,6 +44,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "be0b3f43-f85d-4873-a193-128b9858d5f4"
+      }
     }
   }
-}
+};

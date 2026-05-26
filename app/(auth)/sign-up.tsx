@@ -13,20 +13,22 @@ export default function SignUpScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleSignUp = async () => {
+    setErrorMessage('');
     if (!email || !password || !confirmPassword || !nickname) {
-      Alert.alert('오류', '모든 필드를 입력해주세요.');
+      setErrorMessage('모든 필드를 입력해주세요.');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('오류', '비밀번호가 일치하지 않습니다.');
+      setErrorMessage('비밀번호가 일치하지 않습니다.');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('오류', '비밀번호는 6자리 이상이어야 합니다.');
+      setErrorMessage('비밀번호는 6자리 이상이어야 합니다.');
       return;
     }
 
@@ -49,13 +51,15 @@ export default function SignUpScreen() {
       // (Profile이 이미 생성되었으므로 isProfileComplete가 true가 됨)
     } catch (error: any) {
       console.error(error);
-      let errorMessage = '회원가입 중 오류가 발생했습니다.';
+      let msg = '회원가입 중 오류가 발생했습니다.';
       if (error.code === 'auth/email-already-in-use') {
-        errorMessage = '이미 사용 중인 이메일입니다.';
+        msg = '이미 사용 중인 이메일입니다.';
       } else if (error.code === 'auth/invalid-email') {
-        errorMessage = '유효하지 않은 이메일 형식입니다.';
+        msg = '올바른 이메일 형식이 아닙니다.';
+      } else if (error.code === 'auth/weak-password') {
+        msg = '비밀번호는 6자 이상이어야 합니다.';
       }
-      Alert.alert('회원가입 실패', errorMessage);
+      setErrorMessage(msg);
     } finally {
       setLoading(false);
     }
@@ -69,7 +73,10 @@ export default function SignUpScreen() {
           placeholder="이메일"
           placeholderTextColor={theme.colors.textMuted}
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => {
+            setEmail(text);
+            setErrorMessage('');
+          }}
           autoCapitalize="none"
           keyboardType="email-address"
         />
@@ -78,7 +85,10 @@ export default function SignUpScreen() {
           placeholder="비밀번호 (6자리 이상)"
           placeholderTextColor={theme.colors.textMuted}
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            setErrorMessage('');
+          }}
           secureTextEntry
         />
         <TextInput
@@ -86,7 +96,10 @@ export default function SignUpScreen() {
           placeholder="비밀번호 확인"
           placeholderTextColor={theme.colors.textMuted}
           value={confirmPassword}
-          onChangeText={setConfirmPassword}
+          onChangeText={(text) => {
+            setConfirmPassword(text);
+            setErrorMessage('');
+          }}
           secureTextEntry
         />
         <TextInput
@@ -94,8 +107,14 @@ export default function SignUpScreen() {
           placeholder="닉네임"
           placeholderTextColor={theme.colors.textMuted}
           value={nickname}
-          onChangeText={setNickname}
+          onChangeText={(text) => {
+            setNickname(text);
+            setErrorMessage('');
+          }}
         />
+        {errorMessage ? (
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        ) : null}
       </View>
 
       <TouchableOpacity
@@ -143,5 +162,12 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
+  },
+  errorText: {
+    color: theme.colors.error,
+    fontSize: 12,
+    marginTop: -8,
+    marginBottom: 8,
+    marginLeft: 4,
   },
 });

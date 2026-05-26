@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Image, TouchableOpacity, TextInput, Alert, ScrollView, Switch, Linking, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, View, Image, TouchableOpacity, TextInput, Alert, ScrollView, Switch, Linking, ActivityIndicator, Platform } from 'react-native';
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, auth, storage } from '../../lib/firebase';
@@ -109,9 +109,39 @@ export default function MyScreen() {
   };
 
   const handleLogout = () => {
+    console.log('Logout button pressed');
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('정말 로그아웃 하시겠습니까?')) {
+        const performLogout = async () => {
+          try {
+            await signOut(auth);
+            router.replace('/(auth)/login');
+          } catch (error) {
+            console.error("Logout error:", error);
+            window.alert("로그아웃 중 문제가 발생했습니다.");
+          }
+        };
+        performLogout();
+      }
+      return;
+    }
+
     Alert.alert('로그아웃', '정말 로그아웃 하시겠습니까?', [
       { text: '취소', style: 'cancel' },
-      { text: '로그아웃', style: 'destructive', onPress: () => signOut(auth) },
+      { 
+        text: '로그아웃', 
+        style: 'destructive', 
+        onPress: async () => {
+          try {
+            await signOut(auth);
+            router.replace('/(auth)/login');
+          } catch (error) {
+            console.error("Logout error:", error);
+            Alert.alert("오류", "로그아웃 중 문제가 발생했습니다.");
+          }
+        } 
+      },
     ]);
   };
 

@@ -6,6 +6,11 @@ import { useEffect } from 'react';
 import { useColorScheme } from '@/components/useColorScheme';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { GroupProvider } from '../contexts/GroupContext';
+import messaging from '@react-native-firebase/messaging';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export {
   ErrorBoundary,
@@ -16,6 +21,14 @@ export const unstable_settings = {
 };
 
 SplashScreen.preventAutoHideAsync();
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
@@ -44,6 +57,52 @@ function RootLayoutNav({ loaded }: { loaded: boolean }) {
   const { user, loading, isProfileComplete } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    async function requestUserPermissionAndGetToken() {
+      if (!user) return;
+
+      try {
+        const authStatus = await messaging().requestPermission();
+        const enabled =
+          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+
+        if (enabled) {
+          const token = await messaging().getToken();
+          if (token) {
+            const userRef = doc(db, 'users', user.uid);
+            await updateDoc(userRef, {
+              fcmToken: token,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Push notification setup error:', error);
+      }
+    }
+
+    requestUserPermissionAndGetToken();
+
+    const unsubscribeForeground = messaging().onMessage(async remoteMessage => {
+      if (remoteMessage.notification) {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: remoteMessage.notification.title,
+            body: remoteMessage.notification.body,
+            data: remoteMessage.data,
+          },
+          trigger: null,
+        });
+      }
+    });
+
+    return () => {
+      unsubscribeForeground();
+    };
+  }, [user]);
 
   useEffect(() => {
     if (loading || !loaded) return;

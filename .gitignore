@@ -55,6 +55,8 @@ functions/node_modules/
 # Firebase 서비스 계정 키
 *serviceAccountKey*.json
 *service-account*.json
+google-services.json
+GoogleService-Info.plist
 
 # Functions 환경변수
 functions/.env
