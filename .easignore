@@ -1,0 +1,64 @@
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+.env
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+
+# scripts
+/scripts
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+functions/lib/
+functions/node_modules/
+
+# Firebase 서비스 계정 키
+*serviceAccountKey*.json
+*service-account*.json
+
+# ALLOW Firebase configs for EAS build
+!google-services.json
+!GoogleService-Info.plist
+
+# Functions 환경변수
+functions/.env
+functions/.env.local
+functions/.env.*.local

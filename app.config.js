@@ -6,6 +6,11 @@ export default {
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "moeum",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#6D28D9"
+    },
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
@@ -22,7 +27,12 @@ export default {
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "splash": {
+        "backgroundColor": "#6D28D9",
+        "image": "./assets/splash.png",
+        "resizeMode": "contain"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -34,11 +44,13 @@ export default {
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
       [
-        "expo-splash-screen",
+        "expo-build-properties",
         {
-          "image": "./assets/images/splash-icon.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "android": {
+            "minSdkVersion": 24,
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36
+          }
         }
       ]
     ],
