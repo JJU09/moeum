@@ -1,0 +1,150 @@
+import { db } from './firebase';
+import { 
+  collection, 
+  doc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc,
+  query, 
+  where, 
+  getDocs,
+  getDoc,
+  onSnapshot,
+  serverTimestamp,
+  arrayUnion,
+  arrayRemove,
+  orderBy
+} from 'firebase/firestore';
+import { format, differenceInDays, parseISO } from 'date-fns';
+import { Answer } from '../types';
+
+export const submitAnswer = async (
+  groupId: string, 
+  questionId: string, 
+  userId: string, 
+  content: string
+) => {
+  // 중복 체크
+  const q = query(
+    collection(db, 'answers'),
+    where('groupId', '==', groupId),
+    where('questionId', '==', questionId),
+    where('userId', '==', userId)
+  );
+  
+  const snapshot = await getDocs(q);
+  if (!snapshot.empty) {
+    throw new Error('이미 답변을 작성했습니다.');
+  }
+
+  const answerData = {
+    groupId,
+    questionId,
+    userId,
+    content,
+    reactions: {},
+    createdAt: serverTimestamp(),
+  };
+
+  const answerRef = await addDoc(collection(db, 'answers'), answerData);
+
+  // Update streak and badges
+  const userRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(userRef);
+  if (userSnap.exists()) {
+    const userData = userSnap.data();
+    const today = new Date();
+    const todayStr = format(today, 'yyyy-MM-dd');
+    const lastDateStr = userData.lastAnsweredDate;
+    
+    let newStreakCount = userData.streakCount || 0;
+    
+    if (lastDateStr !== todayStr) {
+      if (lastDateStr) {
+        const lastDate = parseISO(lastDateStr);
+        // Compare dates at midnight to avoid time issues
+        const diffDays = differenceInDays(
+          parseISO(todayStr),
+          parseISO(lastDateStr)
+        );
+        if (diffDays === 1) {
+          newStreakCount += 1;
+        } else {
+          newStreakCount = 1;
+        }
+      } else {
+        newStreakCount = 1;
+      }
+    }
+
+    const currentBadges = userData.badges || [];
+    const newBadges = new Set<string>(currentBadges);
+
+    const hour = today.getHours();
+    if (hour >= 7 && hour < 11) {
+      newBadges.add('early_bird');
+    }
+    
+    if (newStreakCount >= 7) {
+      newBadges.add('streak_7');
+    }
+    if (newStreakCount >= 30) {
+      newBadges.add('streak_30');
+    }
+
+    await updateDoc(userRef, {
+      lastAnsweredDate: todayStr,
+      streakCount: newStreakCount,
+      badges: Array.from(newBadges)
+    });
+  }
+
+  return answerRef;
+};
+
+export const updateAnswer = async (answerId: string, content: string) => {
+  const answerRef = doc(db, 'answers', answerId);
+  await updateDoc(answerRef, { content });
+};
+
+export const deleteAnswer = async (answerId: string) => {
+  const answerRef = doc(db, 'answers', answerId);
+  await deleteDoc(answerRef);
+};
+
+export const toggleReaction = async (
+  answerId: string, 
+  userId: string, 
+  emoji: string, 
+  isAdding: boolean
+) => {
+  const answerRef = doc(db, 'answers', answerId);
+  const fieldPath = `reactions.${emoji}`;
+  
+  await updateDoc(answerRef, {
+    [fieldPath]: isAdding ? arrayUnion(userId) : arrayRemove(userId)
+  });
+};
+
+export const subscribeToAnswers = (
+  groupId: string, 
+  questionId: string, 
+  callback: (answers: Answer[]) => void
+) => {
+  const q = query(
+    collection(db, 'answers'),
+    where('groupId', '==', groupId),
+    where('questionId', '==', questionId),
+    orderBy('createdAt', 'desc')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const answers: Answer[] = [];
+    snapshot.forEach((doc) => {
+      answers.push({ id: doc.id, ...doc.data() } as Answer);
+    });
+    callback(answers);
+  }, (error) => {
+    console.error("Error subscribing to answers:", error);
+  });
+};

@@ -1,22 +1,21 @@
 import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { GroupProvider } from '../contexts/GroupContext';
 
 export {
-  // Catch any errors thrown by the Layout component.
   ErrorBoundary,
 } from 'expo-router';
 
 export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
   initialRouteName: '(tabs)',
 };
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -24,31 +23,61 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
   useEffect(() => {
     if (error) throw error;
   }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
 
   if (!loaded) {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <AuthProvider>
+      <GroupProvider>
+        <RootLayoutNav loaded={loaded} />
+      </GroupProvider>
+    </AuthProvider>
+  );
 }
 
-function RootLayoutNav() {
+function RootLayoutNav({ loaded }: { loaded: boolean }) {
   const colorScheme = useColorScheme();
+  const { user, loading, isProfileComplete } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading || !loaded) return;
+
+    // 인증 상태 및 폰트 로딩이 완료되면 스플래시 화면 숨김
+    SplashScreen.hideAsync();
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!user) {
+      if (!inAuthGroup) {
+        router.replace('/(auth)/login');
+      }
+    } else if (!isProfileComplete) {
+      if (segments[1] !== 'profile-setup') {
+        router.replace('/(auth)/profile-setup');
+      }
+    } else {
+      if (inAuthGroup) {
+        router.replace('/(tabs)');
+      }
+    }
+  }, [user, loading, isProfileComplete, segments, loaded]);
+
+  if (loading) {
+    return null;
+  }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
