@@ -1,17 +1,33 @@
-import React, { useState } from 'react';
-import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View, TextInput, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, Modal, TouchableWithoutFeedback } from 'react-native';
 import { theme } from '../constants/theme';
 import { toggleReaction, updateAnswer } from '../lib/answer';
 import { Avatar } from './Avatar';
 import { Ionicons } from '@expo/vector-icons';
-import { Answer } from '../types';
+import { Answer, Comment } from '../types';
+import { addComment, getComments } from '../lib/comment';
+import { db } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface AnswerFeedProps {
   answers: Answer[];
   currentUserId: string;
 }
 
-const EMOJIS = ['❤️', '🔥', '😂', '👀'];
+const EMOJIS = ['❤️', '🥹', '😂', '👏'];
+
+const CommentCount = ({ answerId }: { answerId: string }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const unsubscribe = getComments(answerId, (comments) => {
+      setCount(comments.length);
+    });
+    return () => unsubscribe();
+  }, [answerId]);
+
+  return <Text style={[styles.reactionCount, { marginLeft: 6 }]}>{count}</Text>;
+};
 
 export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId }) => {
   const myAnswer = answers.find(a => a.userId === currentUserId);
@@ -20,6 +36,66 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId }
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Modal 상태
+  const [activeAnswerId, setActiveAnswerId] = useState<string | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+  // 현재 열려있는 댓글 리스트 구독
+  useEffect(() => {
+    if (!activeAnswerId) {
+      setComments([]);
+      return;
+    }
+    const unsubscribe = getComments(activeAnswerId, (fetchedComments) => {
+      setComments(fetchedComments);
+    });
+    return () => unsubscribe();
+  }, [activeAnswerId]);
+
+  const handleOpenComments = useCallback((answerId: string) => {
+    setActiveAnswerId(answerId);
+    setIsModalVisible(true);
+  }, []);
+
+  const handleCloseComments = useCallback(() => {
+    Keyboard.dismiss();
+    setIsModalVisible(false);
+    setActiveAnswerId(null);
+    setCommentText('');
+  }, []);
+
+  const handleSubmitComment = async () => {
+    if (!commentText.trim() || !activeAnswerId || isSubmittingComment) return;
+    setIsSubmittingComment(true);
+    try {
+      // 내 프로필 정보 가져오기 (answers에서 찾거나 DB에서)
+      let nickname = '익명';
+      let profileImage = null;
+      if (myAnswer?.userProfile) {
+        nickname = myAnswer.userProfile.nickname;
+        profileImage = myAnswer.userProfile.profileImage;
+      } else {
+        const userDoc = await getDoc(doc(db, 'users', currentUserId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          nickname = userData.nickname || '익명';
+          profileImage = userData.profileImage;
+        }
+      }
+      
+      await addComment(activeAnswerId, currentUserId, commentText.trim(), nickname, profileImage || undefined);
+      setCommentText('');
+      Keyboard.dismiss();
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
 
   const handleReaction = async (answerId: string, emoji: string, hasReacted: boolean) => {
     try {
@@ -37,27 +113,38 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId }
 
   const renderReactionButtons = (answer: Answer) => {
     return (
-      <View style={styles.reactionContainer}>
-        {EMOJIS.map(emoji => {
-          const reactions = answer.reactions?.[emoji] || [];
-          const hasReacted = reactions.includes(currentUserId);
-          const count = reactions.length;
+      <View style={styles.bottomActionsContainer}>
+        <View style={styles.reactionContainer}>
+          {EMOJIS.map(emoji => {
+            const reactions = answer.reactions?.[emoji] || [];
+            const hasReacted = reactions.includes(currentUserId);
+            const count = reactions.length;
 
-          return (
-            <TouchableOpacity
-              key={emoji}
-              style={[styles.reactionButton, hasReacted && styles.reactionButtonActive]}
-              onPress={() => handleReaction(answer.id, emoji, hasReacted)}
-            >
-              <Text style={styles.reactionEmoji}>{emoji}</Text>
-              {count > 0 && (
-                <Text style={[styles.reactionCount, hasReacted && styles.reactionCountActive]}>
-                  {count}
-                </Text>
-              )}
-            </TouchableOpacity>
-          );
-        })}
+            return (
+              <TouchableOpacity
+                key={emoji}
+                style={[styles.reactionButton, hasReacted && styles.reactionButtonActive]}
+                onPress={() => handleReaction(answer.id, emoji, hasReacted)}
+              >
+                <Text style={styles.reactionEmoji}>{emoji}</Text>
+                {count > 0 && (
+                  <Text style={[styles.reactionCount, hasReacted && styles.reactionCountActive]}>
+                    {count}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        
+        {/* 댓글 버튼 */}
+        <TouchableOpacity
+          style={styles.reactionButton}
+          onPress={() => handleOpenComments(answer.id)}
+        >
+          <Text style={styles.reactionEmoji}>💬</Text>
+          <CommentCount answerId={answer.id} />
+        </TouchableOpacity>
       </View>
     );
   };
@@ -195,13 +282,96 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId }
   };
 
   return (
-    <FlatList
-      data={myAnswer ? [myAnswer, ...otherAnswers] : otherAnswers}
-      renderItem={renderItem}
-      keyExtractor={item => item.id}
-      contentContainerStyle={styles.listContainer}
-      showsVerticalScrollIndicator={false}
-    />
+    <View style={{ flex: 1 }}>
+      <FlatList
+        data={myAnswer ? [myAnswer, ...otherAnswers] : otherAnswers}
+        renderItem={renderItem}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+      />
+      
+      {/* 댓글 모달 */}
+      <Modal
+        visible={isModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={handleCloseComments}
+      >
+        <KeyboardAvoidingView 
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          {/* 반투명 배경 (터치 시 닫힘) */}
+          <TouchableWithoutFeedback onPress={handleCloseComments}>
+            <View style={styles.modalOverlay} />
+          </TouchableWithoutFeedback>
+          
+          {/* 모달 내용 */}
+          <View style={styles.modalContent}>
+            {/* 드래그 핸들 (장식용) */}
+            <View style={styles.dragHandleContainer}>
+              <View style={styles.dragHandle} />
+            </View>
+            
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>댓글 {comments.length}개</Text>
+              <TouchableOpacity onPress={handleCloseComments} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color={theme.colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            
+            <FlatList
+              data={comments}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <View style={styles.commentItem}>
+                  <Avatar 
+                    profileImage={item.profileImage} 
+                    nickname={item.nickname}
+                    size={32} 
+                  />
+                  <View style={styles.commentContentContainer}>
+                    <View style={styles.commentHeaderRow}>
+                      <Text style={styles.commentNickname}>{item.nickname}</Text>
+                      <Text style={styles.commentTime}>{formatTime(item.createdAt)}</Text>
+                    </View>
+                    <Text style={styles.commentText}>{item.content}</Text>
+                  </View>
+                </View>
+              )}
+              contentContainerStyle={styles.commentListContainer}
+              ListEmptyComponent={
+                <Text style={styles.emptyCommentText}>첫 댓글을 작성해보세요.</Text>
+              }
+            />
+
+            <View style={styles.commentInputWrapper}>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="댓글을 입력하세요..."
+                placeholderTextColor={theme.colors.textMuted}
+                value={commentText}
+                onChangeText={setCommentText}
+                multiline={false}
+                maxLength={300}
+              />
+              <TouchableOpacity 
+                style={[styles.commentSubmitButton, !commentText.trim() && { opacity: 0.5 }]} 
+                onPress={handleSubmitComment}
+                disabled={!commentText.trim() || isSubmittingComment}
+              >
+                {isSubmittingComment ? (
+                  <ActivityIndicator size="small" color={theme.colors.accent} />
+                ) : (
+                  <Ionicons name="send" size={20} color={theme.colors.accent} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </View>
   );
 };
 
@@ -250,6 +420,11 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     marginBottom: 20,
     ...theme.typography.koreanText,
+  },
+  bottomActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   reactionContainer: {
     flexDirection: 'row',
@@ -323,5 +498,120 @@ const styles = StyleSheet.create({
   lengthText: {
     fontSize: 12,
     textAlign: 'right',
+  },
+  // 모달 스타일 추가
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '70%',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  dragHandleContainer: {
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.border,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  commentListContainer: {
+    padding: 16,
+    paddingBottom: 20,
+  },
+  commentItem: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  commentContentContainer: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  commentHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  commentNickname: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    marginRight: 8,
+  },
+  commentTime: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+  commentText: {
+    fontSize: 14,
+    color: theme.colors.textPrimary,
+    lineHeight: 20,
+    ...theme.typography.koreanText,
+  },
+  emptyCommentText: {
+    textAlign: 'center',
+    color: theme.colors.textMuted,
+    marginTop: 40,
+    fontSize: 14,
+  },
+  commentInputWrapper: {
+    flexDirection: 'row',
+    padding: 12,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 12,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    alignItems: 'flex-end',
+  },
+  commentInput: {
+    flex: 1,
+    backgroundColor: theme.colors.surfaceLight,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    minHeight: 40,
+    maxHeight: 100,
+    fontSize: 15,
+    color: theme.colors.textPrimary,
+    textAlignVertical: 'center',
+  },
+  commentSubmitButton: {
+    marginLeft: 12,
+    marginBottom: 2,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.surfaceLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

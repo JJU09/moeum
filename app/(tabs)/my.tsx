@@ -1,40 +1,31 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Image, TouchableOpacity, TextInput, Alert, ScrollView, Switch, Linking } from 'react-native';
+import { StyleSheet, Text, View, Image, TouchableOpacity, TextInput, Alert, ScrollView, Switch, Linking, ActivityIndicator } from 'react-native';
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
-import { db, auth } from '../../lib/firebase';
+import { db, auth, storage } from '../../lib/firebase';
 import { Avatar } from '../../components/Avatar';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { UserProfile } from '../../types';
 
 export default function MyScreen() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   
   // Edit states
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameInput, setNicknameInput] = useState('');
   const [editingStatus, setEditingStatus] = useState(false);
   const [statusInput, setStatusInput] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     loadProfile();
-    loadTheme();
   }, [user]);
-
-  const loadTheme = async () => {
-    try {
-      const savedTheme = await AsyncStorage.getItem('theme');
-      setIsDarkMode(savedTheme === 'dark');
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const loadProfile = async () => {
     if (!user) return;
@@ -53,6 +44,8 @@ export default function MyScreen() {
   };
 
   const pickImage = async () => {
+    if (!user) return;
+    
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
@@ -61,7 +54,29 @@ export default function MyScreen() {
     });
 
     if (!result.canceled && result.assets[0].uri) {
-      await updateProfile('profileImage', result.assets[0].uri);
+      setUploading(true);
+      try {
+        const response = await fetch(result.assets[0].uri);
+        const blob = await response.blob();
+        
+        const MAX_SIZE = 2 * 1024 * 1024; // 2MB
+        if (blob.size > MAX_SIZE) {
+          Alert.alert('알림', '이미지 크기가 너무 큽니다. 2MB 이하의 이미지를 선택해주세요.');
+          setUploading(false);
+          return;
+        }
+        
+        const fileRef = ref(storage, `users/${user.uid}/profile.jpg`);
+        await uploadBytes(fileRef, blob);
+        
+        const downloadUrl = await getDownloadURL(fileRef);
+        await updateProfile('profileImage', downloadUrl);
+      } catch (error) {
+        console.error("Error uploading image:", error);
+        Alert.alert('오류', '프로필 이미지 업로드에 실패했습니다.');
+      } finally {
+        setUploading(false);
+      }
     }
   };
 
@@ -93,15 +108,6 @@ export default function MyScreen() {
     setEditingStatus(false);
   };
 
-  const toggleTheme = async (value: boolean) => {
-    setIsDarkMode(value);
-    try {
-      await AsyncStorage.setItem('theme', value ? 'dark' : 'light');
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const handleLogout = () => {
     Alert.alert('로그아웃', '정말 로그아웃 하시겠습니까?', [
       { text: '취소', style: 'cancel' },
@@ -120,13 +126,18 @@ export default function MyScreen() {
     <ScrollView style={styles.container}>
       {/* Profile Section */}
       <View style={styles.profileSection}>
-        <TouchableOpacity onPress={pickImage}>
+        <TouchableOpacity onPress={pickImage} disabled={uploading}>
           <View style={styles.imageContainer}>
             <Avatar 
               profileImage={profile.profileImage} 
               nickname={profile.nickname}
               size={100} 
             />
+            {uploading && (
+              <View style={[StyleSheet.absoluteFill, styles.uploadingOverlay]}>
+                <ActivityIndicator color={theme.colors.accent} />
+              </View>
+            )}
             <View style={styles.editIconBadge}>
               <Ionicons name="camera" size={12} color="#fff" />
             </View>
@@ -215,15 +226,7 @@ export default function MyScreen() {
           <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
         </TouchableOpacity>
 
-        <View style={styles.settingItem}>
-          <View style={styles.settingRow}>
-            <Ionicons name="moon-outline" size={24} color={theme.colors.textPrimary} />
-            <Text style={styles.settingText}>다크 모드</Text>
-          </View>
-          <Switch value={isDarkMode} onValueChange={toggleTheme} trackColor={{ true: theme.colors.accent, false: theme.colors.border }} />
-        </View>
-
-        <TouchableOpacity style={styles.settingItem} onPress={() => Alert.alert('알림', '준비 중인 기능입니다.')}>
+        <TouchableOpacity style={styles.settingItem} onPress={() => router.push('/notices')}>
           <View style={styles.settingRow}>
             <Ionicons name="megaphone-outline" size={24} color={theme.colors.textPrimary} />
             <Text style={styles.settingText}>공지사항</Text>
@@ -231,7 +234,7 @@ export default function MyScreen() {
           <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.settingItem} onPress={() => Alert.alert('알림', '준비 중인 기능입니다.')}>
+        <TouchableOpacity style={styles.settingItem} onPress={() => router.push('/support')}>
           <View style={styles.settingRow}>
             <Ionicons name="help-circle-outline" size={24} color={theme.colors.textPrimary} />
             <Text style={styles.settingText}>고객센터</Text>
@@ -264,6 +267,14 @@ const styles = StyleSheet.create({
   imageContainer: {
     position: 'relative',
     marginBottom: 16,
+  },
+  uploadingOverlay: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 100,
+    height: 100,
   },
   editIconBadge: {
     position: 'absolute',

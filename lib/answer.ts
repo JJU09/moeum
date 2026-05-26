@@ -48,7 +48,12 @@ export const submitAnswer = async (
     nickname: userData?.nickname || '',
     profileImage: userData?.profileImage || null,
     content,
-    reactions: {},
+    reactions: {
+      "❤️": [],
+      "🥹": [],
+      "😂": [],
+      "👏": []
+    },
     createdAt: serverTimestamp(),
   };
 
@@ -79,26 +84,29 @@ export const submitAnswer = async (
       }
     }
 
-    const currentBadges = userData.badges || [];
-    const newBadges = new Set<string>(currentBadges);
+    const updates: any = {
+      lastAnsweredDate: todayStr,
+      streakCount: newStreakCount
+    };
 
+    const newBadges = [];
     const hour = today.getHours();
-    if (hour >= 7 && hour < 11) {
-      newBadges.add('early_bird');
-    }
     
+    if (hour >= 7 && hour < 11) {
+      newBadges.push('early_bird');
+    }
     if (newStreakCount >= 7) {
-      newBadges.add('streak_7');
+      newBadges.push('streak_7');
     }
     if (newStreakCount >= 30) {
-      newBadges.add('streak_30');
+      newBadges.push('streak_30');
     }
 
-    await updateDoc(userRef, {
-      lastAnsweredDate: todayStr,
-      streakCount: newStreakCount,
-      badges: Array.from(newBadges)
-    });
+    if (newBadges.length > 0) {
+      updates.badges = arrayUnion(...newBadges);
+    }
+
+    await updateDoc(userRef, updates);
   }
 
   return answerRef;

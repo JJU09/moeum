@@ -32,5 +32,26 @@ service cloud.firestore {
       allow update: if request.auth != null && request.auth.uid == resource.data.userId;
       allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
+
+    // 댓글 컬렉션 읽기/쓰기 가능
+    match /comments/{commentId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && 
+                       request.auth.uid == request.resource.data.userId;
+      allow delete: if request.auth != null && 
+                       request.auth.uid == resource.data.userId;
+    }
+
+    // 공지사항 읽기 권한
+    match /notices/{noticeId} {
+      allow read: if request.auth != null;
+      allow write: if false; // 쓰기는 어드민만 가능하게 차단
+    }
+
+    // 문의/피드백 권한
+    match /inquiries/{inquiryId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if false;
+    }
   }
 }
