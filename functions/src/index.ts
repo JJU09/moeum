@@ -9,6 +9,7 @@ export const generateDailyQuestion = onSchedule(
   {
     schedule: "0 7 * * *",
     timeZone: "Asia/Seoul",
+    region: "asia-northeast3",
   },
   async (event) => {
     try {
@@ -26,14 +27,25 @@ export const generateDailyQuestion = onSchedule(
         baseURL: baseURL,
       });
 
+      const topics = ['일상', '음식', '관계', '꿈', '취미', '감정', '여행', '음악', '계절', '성장', '추억', 'friendship'];
+      const randomTopic = topics[Math.floor(Math.random() * topics.length)];
+
       const prompt = `1020세대 친구들이 매일 아침 서로의 생각을 나누는 일기 앱을 위한 질문을 1개 만들어줘.
-조건: 가볍고 긍정적인 톤, 답변하기 부담 없는 주제, 150~200자로 답변 가능한 범위,
-질문만 출력 (다른 말 없이)`;
+오늘의 주제: ${randomTopic}
+조건:
+- 가볍고 긍정적인 톤
+- 답변하기 부담 없는 주제
+- 10~200자로 답변 가능한 범위
+- 이전과 겹치지 않는 신선한 질문
+- 질문은 30자 이내로 짧고 간결하게
+- 한 문장으로만 구성
+- 물음표로 끝내기
+- 질문만 출력 (다른 말 없이, 번호나 설명 없이)`;
 
       const completion = await openai.chat.completions.create({
         messages: [{ role: "user", content: prompt }],
         model: model,
-        temperature: 0.7,
+        temperature: 0.9,
       });
 
       let questionContent = completion.choices[0]?.message?.content?.trim();

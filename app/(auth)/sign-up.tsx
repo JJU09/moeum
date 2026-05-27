@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, Text, Alert } from 'react-native';
+import { View, StyleSheet, TextInput, TouchableOpacity, Text, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
@@ -65,7 +65,7 @@ export default function SignUpScreen() {
     }
   };
 
-  return (
+  const content = (
     <View style={styles.container}>
       <View style={styles.inputContainer}>
         <TextInput
@@ -127,6 +127,22 @@ export default function SignUpScreen() {
         </Text>
       </TouchableOpacity>
     </View>
+  );
+
+  return Platform.OS !== 'web' ? (
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        {content}
+      </ScrollView>
+    </KeyboardAvoidingView>
+  ) : (
+    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      {content}
+    </ScrollView>
   );
 }
 

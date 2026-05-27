@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, Text, Alert } from 'react-native';
+import { View, StyleSheet, TextInput, TouchableOpacity, Text, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
@@ -41,7 +41,7 @@ export default function EmailLoginScreen() {
     }
   };
 
-  return (
+  const content = (
     <View style={styles.container}>
       <View style={styles.inputContainer}>
         <TextInput
@@ -91,6 +91,22 @@ export default function EmailLoginScreen() {
         </Link>
       </View>
     </View>
+  );
+
+  return Platform.OS !== 'web' ? (
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        {content}
+      </ScrollView>
+    </KeyboardAvoidingView>
+  ) : (
+    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      {content}
+    </ScrollView>
   );
 }
 

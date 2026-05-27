@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, Modal, TouchableWithoutFeedback } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+  withSpring,
+  withSequence,
+} from 'react-native-reanimated';
 import { theme } from '../constants/theme';
 import { toggleReaction, updateAnswer } from '../lib/answer';
 import { Avatar } from './Avatar';
@@ -12,9 +20,211 @@ import { doc, getDoc } from 'firebase/firestore';
 interface AnswerFeedProps {
   answers: Answer[];
   currentUserId: string;
+  isReadOnly?: boolean;
 }
 
 const EMOJIS = ['❤️', '🥹', '😂', '👏'];
+
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+
+const AnimatedReactionButton = ({ emoji, count, hasReacted, onPress }: { emoji: string, count: number, hasReacted: boolean, onPress: () => void }) => {
+  const scale = useSharedValue(1);
+
+  const handlePress = () => {
+    const springConfig = { damping: 15, stiffness: 200, mass: 0.8 };
+    if (hasReacted) {
+      scale.value = withSequence(
+        withSpring(1.1, springConfig),
+        withSpring(0.95, springConfig),
+        withSpring(1, springConfig)
+      );
+    } else {
+      scale.value = withSequence(
+        withSpring(1.15, springConfig),
+        withSpring(1, springConfig)
+      );
+    }
+    onPress();
+  };
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <AnimatedTouchableOpacity
+      style={[styles.reactionButton, hasReacted && styles.reactionButtonActive, animatedStyle]}
+      onPress={handlePress}
+    >
+      <Text style={styles.reactionEmoji}>{emoji}</Text>
+      {count > 0 && (
+        <Text style={[styles.reactionCount, hasReacted && styles.reactionCountActive]}>
+          {count}
+        </Text>
+      )}
+    </AnimatedTouchableOpacity>
+  );
+};
+
+const AnimatedCard = React.memo(({ 
+  item, 
+  index,
+  currentUserId,
+  isEditing,
+  editContent,
+  isUpdating,
+  setEditContent,
+  setIsEditing,
+  setIsUpdating,
+  renderReactionButtons,
+  formatTime,
+  isReadOnly
+}: any) => {
+  const isMe = item.userId === currentUserId;
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(30);
+
+  useEffect(() => {
+    const delay = index * 100;
+    opacity.value = withDelay(delay, withTiming(1, { duration: 400 }));
+    translateY.value = withDelay(delay, withTiming(0, { duration: 400 }));
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+  
+  if (isMe && isEditing) {
+    const maxLength = 200;
+    const currentLength = editContent.length;
+    const isValidLength = currentLength >= 1 && currentLength <= maxLength;
+    const progressColor = isValidLength ? theme.colors.success : theme.colors.error;
+    const progressWidth = `${Math.min((currentLength / maxLength) * 100, 100)}%`;
+
+    const handleSave = async () => {
+      if (!isValidLength || isUpdating) return;
+      setIsUpdating(true);
+      try {
+        await updateAnswer(item.id, editContent);
+        setIsEditing(false);
+      } catch (error) {
+        console.error('Error updating answer:', error);
+      } finally {
+        setIsUpdating(false);
+      }
+    };
+
+    return (
+      <Animated.View style={[styles.card, styles.myCard, animatedStyle]}>
+        <View style={styles.header}>
+          <View style={styles.userInfo}>
+            <View style={styles.avatarContainer}>
+            <Avatar 
+              profileImage={item.userProfile?.profileImage || item.profileImage} 
+              nickname={item.userProfile?.nickname || item.nickname || '알 수 없음'}
+              size={36}
+              streakCount={item.userProfile?.streakCount ?? item.streakCount ?? 0}
+            />
+          </View>
+            <View>
+              <Text style={styles.nickname}>{item.nickname || item.userProfile?.nickname || '익명'}</Text>
+              <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
+            </View>
+          </View>
+
+          <View style={styles.actionButtons}>
+            <TouchableOpacity 
+              onPress={() => setIsEditing(false)}
+              disabled={isUpdating}
+            >
+              <Ionicons name="close-circle" size={24} color={theme.colors.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={handleSave}
+              disabled={!isValidLength || isUpdating}
+            >
+              {isUpdating ? (
+                <ActivityIndicator size="small" color={theme.colors.accent} />
+              ) : (
+                <Ionicons 
+                  name="checkmark-circle" 
+                  size={24} 
+                  color={isValidLength ? theme.colors.accent : theme.colors.gray[300]} 
+                />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        <View style={styles.editInputContainer}>
+          <TextInput
+            style={styles.editInput}
+            multiline
+            value={editContent}
+            onChangeText={setEditContent}
+            maxLength={maxLength}
+            textAlignVertical="top"
+            autoFocus
+            placeholderTextColor={theme.colors.textMuted}
+          />
+          
+          <View style={styles.editFooter}>
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBarBackground}>
+                <View 
+                  style={[
+                    styles.progressBarFill, 
+                    { width: progressWidth as any, backgroundColor: progressColor }
+                  ]} 
+                />
+              </View>
+              <Text style={[styles.lengthText, { color: progressColor }]}>
+                {currentLength} / {maxLength}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Animated.View>
+    );
+  }
+
+  return (
+    <Animated.View style={[styles.card, isMe && styles.myCard, animatedStyle]}>
+      <View style={styles.header}>
+        <View style={styles.userInfo}>
+          <View style={styles.avatarContainer}>
+            <Avatar 
+              profileImage={item.profileImage || item.userProfile?.profileImage} 
+              nickname={item.nickname || item.userProfile?.nickname}
+              streakCount={item.userProfile?.streakCount ?? item.streakCount ?? 0}
+              size={40} 
+            />
+          </View>
+          <View>
+            <Text style={styles.nickname}>{item.nickname || item.userProfile?.nickname || '익명'}</Text>
+            <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
+          </View>
+        </View>
+        
+        {isMe && !isReadOnly && (
+          <View style={styles.actionButtons}>
+            <TouchableOpacity onPress={() => {
+              setEditContent(item.content);
+              setIsEditing(true);
+            }}>
+              <Ionicons name="pencil-outline" size={18} color={theme.colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+      
+      <Text style={styles.content}>{item.content}</Text>
+      
+      {renderReactionButtons(item)}
+    </Animated.View>
+  );
+});
 
 const CommentCount = ({ answerId }: { answerId: string }) => {
   const [count, setCount] = useState(0);
@@ -29,7 +239,7 @@ const CommentCount = ({ answerId }: { answerId: string }) => {
   return <Text style={[styles.reactionCount, { marginLeft: 6 }]}>{count}</Text>;
 };
 
-export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId }) => {
+export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId, isReadOnly = false }) => {
   const myAnswer = answers.find(a => a.userId === currentUserId);
   const otherAnswers = answers.filter(a => a.userId !== currentUserId);
 
@@ -111,7 +321,7 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId }
     return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
 
-  const renderReactionButtons = (answer: Answer) => {
+  const renderReactionButtons = useCallback((answer: Answer) => {
     return (
       <View style={styles.bottomActionsContainer}>
         <View style={styles.reactionContainer}>
@@ -121,23 +331,17 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId }
             const count = reactions.length;
 
             return (
-              <TouchableOpacity
+              <AnimatedReactionButton
                 key={emoji}
-                style={[styles.reactionButton, hasReacted && styles.reactionButtonActive]}
+                emoji={emoji}
+                count={count}
+                hasReacted={hasReacted}
                 onPress={() => handleReaction(answer.id, emoji, hasReacted)}
-              >
-                <Text style={styles.reactionEmoji}>{emoji}</Text>
-                {count > 0 && (
-                  <Text style={[styles.reactionCount, hasReacted && styles.reactionCountActive]}>
-                    {count}
-                  </Text>
-                )}
-              </TouchableOpacity>
+              />
             );
           })}
         </View>
         
-        {/* 댓글 버튼 */}
         <TouchableOpacity
           style={styles.reactionButton}
           onPress={() => handleOpenComments(answer.id)}
@@ -147,139 +351,24 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId }
         </TouchableOpacity>
       </View>
     );
-  };
+  }, [currentUserId, handleOpenComments]);
 
-  const renderItem = ({ item }: { item: Answer }) => {
-    const isMe = item.userId === currentUserId;
-    
-    if (isMe && isEditing) {
-      const maxLength = 200;
-      const currentLength = editContent.length;
-      const isValidLength = currentLength >= 1 && currentLength <= maxLength;
-      const progressColor = isValidLength ? theme.colors.success : theme.colors.error;
-      const progressWidth = `${Math.min((currentLength / maxLength) * 100, 100)}%`;
-
-      const handleSave = async () => {
-        if (!isValidLength || isUpdating) return;
-        setIsUpdating(true);
-        try {
-          await updateAnswer(item.id, editContent);
-          setIsEditing(false);
-        } catch (error) {
-          console.error('Error updating answer:', error);
-        } finally {
-          setIsUpdating(false);
-        }
-      };
-
-      return (
-        <View style={[styles.card, styles.myCard]}>
-          <View style={styles.header}>
-            <View style={styles.userInfo}>
-              <View style={styles.avatarContainer}>
-                <Avatar 
-                  profileImage={item.profileImage || item.userProfile?.profileImage} 
-                  nickname={item.nickname || item.userProfile?.nickname}
-                  size={40} 
-                />
-              </View>
-              <View>
-                <Text style={styles.nickname}>{item.nickname || item.userProfile?.nickname || '익명'}</Text>
-                <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
-              </View>
-            </View>
-
-            <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                onPress={() => setIsEditing(false)}
-                disabled={isUpdating}
-              >
-                <Ionicons name="close-circle" size={24} color={theme.colors.textMuted} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={handleSave}
-                disabled={!isValidLength || isUpdating}
-              >
-                {isUpdating ? (
-                  <ActivityIndicator size="small" color={theme.colors.accent} />
-                ) : (
-                  <Ionicons 
-                    name="checkmark-circle" 
-                    size={24} 
-                    color={isValidLength ? theme.colors.accent : theme.colors.gray[300]} 
-                  />
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-          
-          <View style={styles.editInputContainer}>
-            <TextInput
-              style={styles.editInput}
-              multiline
-              value={editContent}
-              onChangeText={setEditContent}
-              maxLength={maxLength}
-              textAlignVertical="top"
-              autoFocus
-              placeholderTextColor={theme.colors.textMuted}
-            />
-            
-            <View style={styles.editFooter}>
-              <View style={styles.progressContainer}>
-                <View style={styles.progressBarBackground}>
-                  <View 
-                    style={[
-                      styles.progressBarFill, 
-                      { width: progressWidth as any, backgroundColor: progressColor }
-                    ]} 
-                  />
-                </View>
-                <Text style={[styles.lengthText, { color: progressColor }]}>
-                  {currentLength} / {maxLength}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      );
-    }
-
-    return (
-      <View style={[styles.card, isMe && styles.myCard]}>
-        <View style={styles.header}>
-          <View style={styles.userInfo}>
-            <View style={styles.avatarContainer}>
-              <Avatar 
-                profileImage={item.profileImage || item.userProfile?.profileImage} 
-                nickname={item.nickname || item.userProfile?.nickname}
-                size={40} 
-              />
-            </View>
-            <View>
-              <Text style={styles.nickname}>{item.nickname || item.userProfile?.nickname || '익명'}</Text>
-              <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
-            </View>
-          </View>
-          
-          {isMe && (
-            <View style={styles.actionButtons}>
-              <TouchableOpacity onPress={() => {
-                setEditContent(item.content);
-                setIsEditing(true);
-              }}>
-                <Ionicons name="pencil-outline" size={18} color={theme.colors.textMuted} />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-        
-        <Text style={styles.content}>{item.content}</Text>
-        
-        {renderReactionButtons(item)}
-      </View>
-    );
-  };
+  const renderItem = useCallback(({ item, index }: { item: Answer, index: number }) => (
+    <AnimatedCard 
+      item={item} 
+      index={index}
+      currentUserId={currentUserId}
+      isEditing={isEditing}
+      editContent={editContent}
+      isUpdating={isUpdating}
+      setEditContent={setEditContent}
+      setIsEditing={setIsEditing}
+      setIsUpdating={setIsUpdating}
+      renderReactionButtons={renderReactionButtons}
+      formatTime={formatTime}
+      isReadOnly={isReadOnly}
+    />
+  ), [currentUserId, isEditing, editContent, isUpdating, renderReactionButtons, isReadOnly]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -298,17 +387,18 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId }
         animationType="slide"
         onRequestClose={handleCloseComments}
       >
-        <KeyboardAvoidingView 
-          style={styles.modalContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
+        <View style={styles.modalContainer}>
           {/* 반투명 배경 (터치 시 닫힘) */}
           <TouchableWithoutFeedback onPress={handleCloseComments}>
             <View style={styles.modalOverlay} />
           </TouchableWithoutFeedback>
           
-          {/* 모달 내용 */}
-          <View style={styles.modalContent}>
+          <KeyboardAvoidingView 
+            style={styles.keyboardAvoidContainer}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            {/* 모달 내용 */}
+            <View style={styles.modalContent}>
             {/* 드래그 핸들 (장식용) */}
             <View style={styles.dragHandleContainer}>
               <View style={styles.dragHandle} />
@@ -370,6 +460,7 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId }
             </View>
           </View>
         </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );
@@ -433,16 +524,22 @@ const styles = StyleSheet.create({
   reactionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.surfaceLight,
+    justifyContent: 'center',
+    width: 52,
+    minWidth: 52,
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    marginHorizontal: 4,
+    overflow: 'hidden',
   },
   reactionButtonActive: {
-    backgroundColor: theme.colors.accentSoft + '30', // 30 is hex opacity
-    borderColor: theme.colors.accentSoft,
+    backgroundColor: theme.colors.accent + '30', // 30 is hex opacity
+    borderColor: theme.colors.accent,
+    borderWidth: 1,
   },
   reactionEmoji: {
     fontSize: 14,
@@ -452,6 +549,8 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginLeft: 6,
     fontWeight: '600',
+    minWidth: 16,
+    textAlign: 'center',
   },
   reactionCountActive: {
     color: theme.colors.accent,
@@ -502,10 +601,17 @@ const styles = StyleSheet.create({
   // 모달 스타일 추가
   modalContainer: {
     flex: 1,
+  },
+  keyboardAvoidContainer: {
+    flex: 1,
     justifyContent: 'flex-end',
   },
   modalOverlay: {
-    ...StyleSheet.absoluteFill,
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { FontAwesome } from '@expo/vector-icons';
@@ -14,10 +15,16 @@ export default function LoginScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
+  const redirectUri = makeRedirectUri({
+    scheme: 'com.moeum.app',
+    useProxy: false,
+  });
+
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    redirectUri,
   });
 
   useEffect(() => {
@@ -33,7 +40,7 @@ export default function LoginScreen() {
     }
   }, [response]);
 
-  return (
+  const content = (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
         <Text style={styles.title}>Moeum</Text>
@@ -64,6 +71,22 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </View>
     </View>
+  );
+
+  return Platform.OS !== 'web' ? (
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        {content}
+      </ScrollView>
+    </KeyboardAvoidingView>
+  ) : (
+    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+      {content}
+    </ScrollView>
   );
 }
 

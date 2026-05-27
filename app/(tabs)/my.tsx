@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, Image, TouchableOpacity, TextInput, Alert, ScrollView, Switch, Linking, ActivityIndicator, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, auth, storage } from '../../lib/firebase';
@@ -11,6 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { UserProfile } from '../../types';
+import { getUserTier } from '../../lib/badge';
 
 export default function MyScreen() {
   const { user } = useAuth();
@@ -146,22 +148,28 @@ export default function MyScreen() {
   };
 
   if (!profile) {
-    return <View style={styles.container}><Text>Loading...</Text></View>;
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <Text>Loading...</Text>
+      </SafeAreaView>
+    );
   }
 
-  const badges = profile.badges || [];
   const streakCount = profile.streakCount || 0;
+  const tierInfo = getUserTier(streakCount);
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Profile Section */}
-      <View style={styles.profileSection}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView>
+        {/* Profile Section */}
+        <View style={styles.profileSection}>
         <TouchableOpacity onPress={pickImage} disabled={uploading}>
           <View style={styles.imageContainer}>
             <Avatar 
               profileImage={profile.profileImage} 
               nickname={profile.nickname}
               size={100} 
+              streakCount={profile.streakCount || 0}
             />
             {uploading && (
               <View style={[StyleSheet.absoluteFill, styles.uploadingOverlay]}>
@@ -213,33 +221,33 @@ export default function MyScreen() {
         </View>
       </View>
 
-      {/* Streak & Badges Section */}
+      {/* Streak & Tier Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>나의 모음 기록장</Text>
         
-        <View style={styles.streakContainer}>
-          <Text style={styles.streakTitle}>현재 연속 답변</Text>
-          <Text style={styles.streakCount}>🔥 {streakCount}일</Text>
-        </View>
-
-        <View style={styles.badgesContainer}>
-          <View style={styles.badgeItem}>
-            <View style={[styles.badgeIcon, !badges.includes('early_bird') && styles.badgeDisabled]}>
-              <Text style={styles.badgeEmoji}>🌅</Text>
+        <View style={styles.streakCard}>
+          <View style={styles.streakRow}>
+            <View style={styles.streakInfo}>
+              <Text style={styles.streakTitle}>현재 연속 답변</Text>
+              <Text style={styles.streakCount}>🔥 {streakCount}일</Text>
             </View>
-            <Text style={styles.badgeName}>얼리버드</Text>
+            
+            <View style={styles.tierInfo}>
+              <Text style={styles.tierTitle}>현재 등급</Text>
+              <Text style={[styles.tierLabel, { color: tierInfo.isGradient && tierInfo.gradientColors ? tierInfo.gradientColors[0] : tierInfo.color }]}>
+                {tierInfo.label}
+              </Text>
+            </View>
           </View>
-          <View style={styles.badgeItem}>
-            <View style={[styles.badgeIcon, !badges.includes('streak_7') && styles.badgeDisabled]}>
-              <Text style={styles.badgeEmoji}>📅</Text>
-            </View>
-            <Text style={styles.badgeName}>7일 연속</Text>
-          </View>
-          <View style={styles.badgeItem}>
-            <View style={[styles.badgeIcon, !badges.includes('streak_30') && styles.badgeDisabled]}>
-              <Text style={styles.badgeEmoji}>👑</Text>
-            </View>
-            <Text style={styles.badgeName}>30일 연속</Text>
+          
+          <View style={styles.nextTierContainer}>
+            {tierInfo.tier === 'DAWN' ? (
+              <Text style={styles.nextTierText}>최고 등급 달성! 🎉</Text>
+            ) : (
+              <Text style={styles.nextTierText}>
+                다음 등급 '{tierInfo.nextTierLabel}'까지 {tierInfo.nextTierDays}일 남았어요!
+              </Text>
+            )}
           </View>
         </View>
       </View>
@@ -248,7 +256,7 @@ export default function MyScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>설정</Text>
         
-        <TouchableOpacity style={styles.settingItem} onPress={() => Linking.openSettings()}>
+        <TouchableOpacity style={styles.settingItem} onPress={() => router.push('/notification-settings')}>
           <View style={styles.settingRow}>
             <Ionicons name="notifications-outline" size={24} color={theme.colors.textPrimary} />
             <Text style={styles.settingText}>앱 알림 설정</Text>
@@ -272,14 +280,15 @@ export default function MyScreen() {
           <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.settingItem, styles.logoutItem]} onPress={handleLogout}>
-          <View style={styles.settingRow}>
-            <Ionicons name="log-out-outline" size={24} color={theme.colors.error} />
-            <Text style={[styles.settingText, { color: theme.colors.error }]}>로그아웃</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          <TouchableOpacity style={[styles.settingItem, styles.logoutItem]} onPress={handleLogout}>
+            <View style={styles.settingRow}>
+              <Ionicons name="log-out-outline" size={24} color={theme.colors.error} />
+              <Text style={[styles.settingText, { color: theme.colors.error }]}>로그아웃</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -374,54 +383,54 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     marginBottom: 16,
   },
-  streakContainer: {
+  streakCard: {
     backgroundColor: theme.colors.surface,
-    padding: 16,
+    padding: 20,
     borderRadius: theme.border.radius,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  streakRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+  },
+  streakInfo: {
+    alignItems: 'flex-start',
   },
   streakTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 14,
     color: theme.colors.textSecondary,
+    fontWeight: '500',
   },
   streakCount: {
     fontSize: 24,
     fontWeight: '700',
-    color: theme.colors.accent,
+    color: theme.colors.textPrimary,
+    marginTop: 4,
   },
-  badgesContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  tierInfo: {
+    alignItems: 'flex-end',
   },
-  badgeItem: {
+  tierTitle: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    fontWeight: '500',
+  },
+  tierLabel: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  nextTierContainer: {
+    backgroundColor: theme.colors.background,
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: 'center',
   },
-  badgeIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: theme.colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  badgeDisabled: {
-    opacity: 0.3,
-    backgroundColor: theme.colors.surfaceLight,
-  },
-  badgeEmoji: {
-    fontSize: 32,
-  },
-  badgeName: {
-    fontSize: 12,
+  nextTierText: {
+    fontSize: 14,
     color: theme.colors.textSecondary,
     fontWeight: '500',
   },

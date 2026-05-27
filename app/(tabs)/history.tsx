@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Modal, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, DateData } from 'react-native-calendars';
 import { format, parseISO, isFuture, isToday } from 'date-fns';
 import { useRouter } from 'expo-router';
@@ -123,7 +124,7 @@ export default function HistoryScreen() {
   const selectedGroup = groups.find(g => g.id === selectedGroupId);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* 상단 헤더 */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>
@@ -219,7 +220,7 @@ export default function HistoryScreen() {
           </View>
         </Pressable>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 

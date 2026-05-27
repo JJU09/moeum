@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GroupProvider } from '../contexts/GroupContext';
 import messaging from '@react-native-firebase/messaging';
 import * as Notifications from 'expo-notifications';
@@ -44,11 +45,13 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <GroupProvider>
-        <RootLayoutNav loaded={loaded} />
-      </GroupProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <GroupProvider>
+          <RootLayoutNav loaded={loaded} />
+        </GroupProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

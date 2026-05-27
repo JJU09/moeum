@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
@@ -103,7 +104,7 @@ export default function GroupScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {groups.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Ionicons name="people-outline" size={64} color={theme.colors.border} />
@@ -114,7 +115,7 @@ export default function GroupScreen() {
         <FlatList
           data={groups}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <GroupCard group={item} onPress={() => {/* 그룹 상세 화면 이동 */}} />}
+          renderItem={({ item }) => <GroupCard group={item} />}
           contentContainerStyle={styles.listContainer}
         />
       )}
@@ -246,7 +247,7 @@ export default function GroupScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 

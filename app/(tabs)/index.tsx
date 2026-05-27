@@ -6,10 +6,12 @@ import {
   TextInput, 
   TouchableOpacity, 
   FlatList, 
-  SafeAreaView,
   Modal,
-  ActivityIndicator
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGroups } from '../../contexts/GroupContext';
@@ -98,7 +100,7 @@ export default function TodayScreen() {
 
   if (groups.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centerAll}>
           <Text style={[styles.emptyText, { fontSize: 18, fontWeight: '700', marginBottom: 12, color: theme.colors.textPrimary }]}>아직 속한 그룹이 없습니다.</Text>
           <Text style={styles.emptyText}>'그룹' 탭에서 새로운 그룹을 만들거나</Text>
@@ -108,8 +110,8 @@ export default function TodayScreen() {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container}>
+  const screenContent = (
+    <SafeAreaView style={styles.container} edges={['top']}>
       {renderGroupSelector()}
       
       <View style={styles.content}>
@@ -137,6 +139,16 @@ export default function TodayScreen() {
       {renderGroupModal()}
     </SafeAreaView>
   );
+
+  return Platform.OS !== 'web' ? (
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
+      {screenContent}
+    </KeyboardAvoidingView>
+  ) : screenContent;
 }
 
 const styles = StyleSheet.create({

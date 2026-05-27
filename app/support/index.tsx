@@ -31,12 +31,15 @@ export default function SupportScreen() {
   }, [user]);
 
   const handleSubmit = async () => {
+    console.log('문의 제출 버튼 클릭됨', { contentLen: content.length, hasUser: !!user, hasProfile: !!profile });
+
     if (content.length < 10) {
       Alert.alert('알림', '내용을 10자 이상 입력해주세요.');
       return;
     }
 
     if (!user || !profile) {
+      console.warn('문의 제출 실패: 로그인 정보 또는 프로필 없음', { hasUser: !!user, hasProfile: !!profile });
       Alert.alert('오류', '로그인 정보가 없습니다.');
       return;
     }
@@ -52,12 +55,28 @@ export default function SupportScreen() {
         status: '접수됨',
       });
       
-      Alert.alert('알림', '문의가 접수되었어요 💜', [
-        { text: '확인', onPress: () => router.back() }
-      ]);
+      setContent('');
+      setCategory('문의');
+
+      if (Platform.OS === 'web') {
+        window.alert('문의가 접수되었어요 💜\n소중한 의견 감사해요. 빠르게 확인할게요!');
+        router.back();
+      } else {
+        Alert.alert(
+          '문의가 접수되었어요 💜',
+          '소중한 의견 감사해요. 빠르게 확인할게요!',
+          [{ text: '확인', onPress: () => router.back() }]
+        );
+      }
     } catch (error) {
-      console.error('Error submitting inquiry:', error);
-      Alert.alert('오류', '문의 접수에 실패했습니다. 다시 시도해주세요.');
+      console.error('문의 접수 Firestore 에러:', error);
+      const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
+      
+      if (Platform.OS === 'web') {
+        window.alert(`오류: 문의 접수에 실패했습니다.\n(${errorMessage})`);
+      } else {
+        Alert.alert('오류', `문의 접수에 실패했습니다.\n(${errorMessage})`);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -74,10 +93,70 @@ export default function SupportScreen() {
           headerShadowVisible: false,
         }}
       />
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      {Platform.OS !== 'web' ? (
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        >
+          <ScrollView contentContainerStyle={styles.container}>
+          <Text style={styles.title}>무엇을 도와드릴까요?</Text>
+          
+          <Text style={styles.label}>카테고리</Text>
+          <View style={styles.categoryContainer}>
+            {CATEGORIES.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[
+                  styles.categoryButton,
+                  category === cat && styles.categoryButtonSelected
+                ]}
+                onPress={() => setCategory(cat)}
+              >
+                <Text
+                  style={[
+                    styles.categoryText,
+                    category === cat && styles.categoryTextSelected
+                  ]}
+                >
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.label}>내용</Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="문의하실 내용을 자세히 적어주세요. (최소 10자 이상)"
+              placeholderTextColor={theme.colors.textMuted}
+              multiline
+              maxLength={500}
+              value={content}
+              onChangeText={setContent}
+              textAlignVertical="top"
+            />
+            <Text style={styles.charCount}>
+              {content.length}/500
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              isSubmitting && styles.submitButtonDisabled
+            ]}
+            onPress={handleSubmit}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {isSubmitting ? '접수 중...' : '제출하기'}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+        </KeyboardAvoidingView>
+      ) : (
         <ScrollView contentContainerStyle={styles.container}>
           <Text style={styles.title}>무엇을 도와드릴까요?</Text>
           
@@ -124,17 +203,17 @@ export default function SupportScreen() {
           <TouchableOpacity
             style={[
               styles.submitButton,
-              (content.length < 10 || isSubmitting) && styles.submitButtonDisabled
+              isSubmitting && styles.submitButtonDisabled
             ]}
             onPress={handleSubmit}
-            disabled={content.length < 10 || isSubmitting}
+            disabled={isSubmitting}
           >
             <Text style={styles.submitButtonText}>
               {isSubmitting ? '접수 중...' : '제출하기'}
             </Text>
           </TouchableOpacity>
         </ScrollView>
-      </KeyboardAvoidingView>
+      )}
     </SafeAreaView>
   );
 }

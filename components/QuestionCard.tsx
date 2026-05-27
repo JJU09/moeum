@@ -1,7 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, Text, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { theme } from '../constants/theme';
 
 interface QuestionCardProps {
@@ -10,14 +16,34 @@ interface QuestionCardProps {
 }
 
 export const QuestionCard: React.FC<QuestionCardProps> = ({ questionText, title = "오늘의 질문" }) => {
+  const translateY = useSharedValue(40);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    translateY.value = withTiming(0, {
+      duration: 600,
+      easing: Easing.out(Easing.cubic),
+    });
+    opacity.value = withTiming(1, {
+      duration: 600,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+    opacity: opacity.value,
+  }));
+
   return (
-    <LinearGradient
-      colors={theme.gradients.warm}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.container}
-    >
-      {Platform.OS === 'web' ? (
+    <Animated.View style={animatedStyle}>
+      <LinearGradient
+        colors={theme.gradients.warm}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
+        {Platform.OS === 'web' ? (
         <Text style={[styles.subtitle, {
           backgroundImage: 'linear-gradient(to right, #7FFFD4, #FFFFFF)',
           WebkitBackgroundClip: 'text',
@@ -44,10 +70,11 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ questionText, title 
           />
         </MaskedView>
       )}
-      <Text style={styles.text}>
-        {questionText ? questionText : "오늘의 질문을 준비 중이에요 🌙"}
-      </Text>
-    </LinearGradient>
+        <Text style={styles.text}>
+          {questionText ? questionText : "오늘의 질문을 준비 중이에요 🌙"}
+        </Text>
+      </LinearGradient>
+    </Animated.View>
   );
 };
 
@@ -79,7 +106,7 @@ const styles = StyleSheet.create({
     marginBottom: Platform.OS === 'web' ? 12 : 0,
   },
   text: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
     color: theme.colors.textPrimary,
     textAlign: 'center',

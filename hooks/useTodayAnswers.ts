@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Answer } from '../types';
+import { Answer, UserProfile } from '../types';
 import { subscribeToAnswers } from '../lib/answer';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 export function useTodayAnswers(
   groupId: string | null | undefined, 
@@ -18,8 +20,31 @@ export function useTodayAnswers(
     }
 
     setLoading(true);
-    const unsubscribe = subscribeToAnswers(groupId, questionId, (newAnswers) => {
-      setAnswers(newAnswers);
+    const unsubscribe = subscribeToAnswers(groupId, questionId, async (newAnswers) => {
+      // Fetch latest userProfile (specifically streakCount) for each answer
+      const enrichedAnswers = await Promise.all(
+        newAnswers.map(async (answer) => {
+          try {
+            const userRef = doc(db, 'users', answer.userId);
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+              const userData = userSnap.data() as UserProfile;
+              return {
+                ...answer,
+                userProfile: {
+                  ...answer.userProfile,
+                  ...userData,
+                }
+              };
+            }
+          } catch (error) {
+            console.error('Error fetching user profile for answer:', error);
+          }
+          return answer;
+        })
+      );
+      
+      setAnswers(enrichedAnswers);
       setLoading(false);
     });
 

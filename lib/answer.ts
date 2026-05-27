@@ -41,35 +41,14 @@ export const submitAnswer = async (
   const userSnap = await getDoc(userRef);
   const userData = userSnap.exists() ? userSnap.data() : null;
 
-  const answerData = {
-    groupId,
-    questionId,
-    userId,
-    nickname: userData?.nickname || '',
-    profileImage: userData?.profileImage || null,
-    content,
-    reactions: {
-      "❤️": [],
-      "🥹": [],
-      "😂": [],
-      "👏": []
-    },
-    createdAt: serverTimestamp(),
-  };
-
-  const answerRef = await addDoc(collection(db, 'answers'), answerData);
-
-  if (userSnap.exists() && userData) {
-    const today = new Date();
-    const todayStr = format(today, 'yyyy-MM-dd');
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
+  
+  let newStreakCount = userData?.streakCount || 0;
+  if (userData) {
     const lastDateStr = userData.lastAnsweredDate;
-    
-    let newStreakCount = userData.streakCount || 0;
-    
     if (lastDateStr !== todayStr) {
       if (lastDateStr) {
-        const lastDate = parseISO(lastDateStr);
-        // Compare dates at midnight to avoid time issues
         const diffDays = differenceInDays(
           parseISO(todayStr),
           parseISO(lastDateStr)
@@ -83,6 +62,29 @@ export const submitAnswer = async (
         newStreakCount = 1;
       }
     }
+  }
+
+  const answerData = {
+    groupId,
+    questionId,
+    userId,
+    nickname: userData?.nickname || '',
+    profileImage: userData?.profileImage || null,
+    streakCount: newStreakCount,
+    content,
+    reactions: {
+      "❤️": [],
+      "🥹": [],
+      "😂": [],
+      "👏": []
+    },
+    createdAt: serverTimestamp(),
+  };
+
+  const answerRef = await addDoc(collection(db, 'answers'), answerData);
+
+  if (userSnap.exists() && userData) {
+    const lastDateStr = userData.lastAnsweredDate;
 
     const updates: any = {
       lastAnsweredDate: todayStr,

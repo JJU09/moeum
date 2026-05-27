@@ -33,6 +33,7 @@ export interface Answer {
   content: string;
   nickname?: string;
   profileImage?: string;
+  streakCount?: number;
   reactions: {
     "❤️": string[];
     "🥹": string[];
