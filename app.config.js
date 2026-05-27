@@ -20,6 +20,7 @@ export default {
     },
     "android": {
       "package": "com.moeum.app",
+      "softwareKeyboardLayoutMode": "pan",
       "googleServicesFile": process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#6D28D9",

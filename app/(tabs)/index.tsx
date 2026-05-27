@@ -110,30 +110,29 @@ export default function TodayScreen() {
     );
   }
 
+  const renderHeader = () => (
+    <View>
+      <QuestionCard questionText={question?.text} />
+      {!hasAnswered && (
+        <AnswerInput 
+          onSubmit={handleAnswerSubmit} 
+          answerCount={answers.length} 
+        />
+      )}
+      {hasAnswered && <View style={{ height: 16 }} />}
+    </View>
+  );
+
   const screenContent = (
     <SafeAreaView style={styles.container} edges={['top']}>
       {renderGroupSelector()}
       
       <View style={styles.content}>
-        {!hasAnswered ? (
-          <>
-            <QuestionCard questionText={question?.text} />
-            <AnswerInput 
-              onSubmit={handleAnswerSubmit} 
-              answerCount={answers.length} 
-            />
-          </>
-        ) : (
-          <>
-            <View style={{ marginBottom: 16 }}>
-              <QuestionCard questionText={question?.text} />
-            </View>
-            <AnswerFeed 
-              answers={answers} 
-              currentUserId={user.uid} 
-            />
-          </>
-        )}
+        <AnswerFeed 
+          answers={hasAnswered ? answers : []} 
+          currentUserId={user.uid}
+          ListHeaderComponent={renderHeader}
+        />
       </View>
 
       {renderGroupModal()}
@@ -178,8 +177,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
-    justifyContent: 'space-between',
+    paddingHorizontal: 20,
   },
   questionCard: {
     backgroundColor: '#F5F0E8',

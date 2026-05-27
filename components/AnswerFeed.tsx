@@ -22,6 +22,7 @@ interface AnswerFeedProps {
   answers: Answer[];
   currentUserId: string;
   isReadOnly?: boolean;
+  ListHeaderComponent?: React.ComponentType<any> | React.ReactElement | null;
 }
 
 const EMOJIS = ['❤️', '🥹', '😂', '👏'];
@@ -240,7 +241,12 @@ const CommentCount = ({ answerId }: { answerId: string }) => {
   return <Text style={[styles.reactionCount, { marginLeft: 6 }]}>{count}</Text>;
 };
 
-export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId, isReadOnly = false }) => {
+export const AnswerFeed: React.FC<AnswerFeedProps> = ({ 
+  answers, 
+  currentUserId, 
+  isReadOnly = false,
+  ListHeaderComponent
+}) => {
   const insets = useSafeAreaInsets();
   const myAnswer = answers.find(a => a.userId === currentUserId);
   const otherAnswers = answers.filter(a => a.userId !== currentUserId);
@@ -380,6 +386,7 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId, 
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={ListHeaderComponent}
       />
       
       {/* 댓글 모달 */}
@@ -388,6 +395,7 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId, 
         transparent
         animationType="slide"
         onRequestClose={handleCloseComments}
+        statusBarTranslucent={true}
       >
         <View style={styles.modalContainer}>
           {/* 반투명 배경 (터치 시 닫힘) */}
@@ -395,13 +403,8 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId, 
             <View style={styles.modalOverlay} />
           </TouchableWithoutFeedback>
           
-          <KeyboardAvoidingView 
-            style={styles.keyboardAvoidContainer}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-          >
-            {/* 모달 내용 */}
-            <View style={styles.modalContent}>
+          {/* 모달 내용 */}
+          <View style={styles.modalContent}>
             {/* 드래그 핸들 (장식용) */}
             <View style={styles.dragHandleContainer}>
               <View style={styles.dragHandle} />
@@ -462,7 +465,6 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId, 
               </TouchableOpacity>
             </View>
           </View>
-        </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>
@@ -617,9 +619,6 @@ const styles = StyleSheet.create({
   },
   // 모달 스타일 추가
   modalContainer: {
-    flex: 1,
-  },
-  keyboardAvoidContainer: {
     flex: 1,
     justifyContent: 'flex-end',
   },

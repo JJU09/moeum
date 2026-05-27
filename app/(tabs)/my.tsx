@@ -69,13 +69,21 @@ export default function MyScreen() {
         }
         
         const fileRef = ref(storage, `users/${user.uid}/profile.jpg`);
+        console.log("Starting upload to:", fileRef.fullPath);
+        
         await uploadBytes(fileRef, blob);
+        console.log("Upload successful");
         
         const downloadUrl = await getDownloadURL(fileRef);
         await updateProfile('profileImage', downloadUrl);
-      } catch (error) {
-        console.error("Error uploading image:", error);
-        Alert.alert('오류', '프로필 이미지 업로드에 실패했습니다.');
+      } catch (error: any) {
+        console.error("Detailed error uploading image:", {
+          message: error.message,
+          code: error.code,
+          name: error.name,
+          serverResponse: error.serverResponse
+        });
+        Alert.alert('오류', `프로필 이미지 업로드에 실패했습니다: ${error.message || '알 수 없는 오류'}`);
       } finally {
         setUploading(false);
       }
