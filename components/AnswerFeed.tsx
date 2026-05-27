@@ -345,7 +345,7 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId, 
         </View>
         
         <TouchableOpacity
-          style={styles.reactionButton}
+          style={styles.commentButton}
           onPress={() => handleOpenComments(answer.id)}
         >
           <Text style={styles.reactionEmoji}>💬</Text>
@@ -517,27 +517,41 @@ const styles = StyleSheet.create({
   },
   bottomActionsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
+    width: '100%',
   },
   reactionContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
     gap: 8,
+    overflow: 'hidden',
   },
   reactionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    width: 52,
-    minWidth: 52,
+    width: 44,
+    height: 32,
     backgroundColor: theme.colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    marginHorizontal: 4,
     overflow: 'hidden',
+  },
+  commentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 52,
+    height: 32,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    overflow: 'hidden',
+    marginLeft: 'auto',
   },
   reactionButtonActive: {
     backgroundColor: theme.colors.accent + '30', // 30 is hex opacity
