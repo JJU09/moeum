@@ -16,6 +16,7 @@ import { Answer, Comment } from '../types';
 import { addComment, getComments } from '../lib/comment';
 import { db } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface AnswerFeedProps {
   answers: Answer[];
@@ -240,6 +241,7 @@ const CommentCount = ({ answerId }: { answerId: string }) => {
 };
 
 export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId, isReadOnly = false }) => {
+  const insets = useSafeAreaInsets();
   const myAnswer = answers.find(a => a.userId === currentUserId);
   const otherAnswers = answers.filter(a => a.userId !== currentUserId);
 
@@ -395,7 +397,8 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId, 
           
           <KeyboardAvoidingView 
             style={styles.keyboardAvoidContainer}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
           >
             {/* 모달 내용 */}
             <View style={styles.modalContent}>
@@ -436,7 +439,7 @@ export const AnswerFeed: React.FC<AnswerFeedProps> = ({ answers, currentUserId, 
               }
             />
 
-            <View style={styles.commentInputWrapper}>
+            <View style={[styles.commentInputWrapper, { paddingBottom: insets.bottom + 8 }]}>
               <TextInput
                 style={styles.commentInput}
                 placeholder="댓글을 입력하세요..."
@@ -692,7 +695,6 @@ const styles = StyleSheet.create({
   commentInputWrapper: {
     flexDirection: 'row',
     padding: 12,
-    paddingBottom: Platform.OS === 'ios' ? 32 : 12,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.surface,

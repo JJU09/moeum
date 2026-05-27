@@ -125,39 +125,44 @@ export default function HistoryScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* 상단 헤더 */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {format(currentMonth, 'yyyy년 M월')}
-        </Text>
-        <TouchableOpacity 
-          style={styles.groupSelector} 
-          onPress={() => setShowGroupPicker(true)}
-        >
-          <Text style={styles.groupSelectorText} numberOfLines={1}>
-            {selectedGroup ? selectedGroup.name : '그룹 선택'}
+      <ScrollView 
+        style={{ flex: 1 }} 
+        contentContainerStyle={{ paddingBottom: (selectedDate && archiveData[selectedDate]) ? 350 : 0 }}
+      >
+        {/* 상단 헤더 */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>
+            {format(currentMonth, 'yyyy년 M월')}
           </Text>
-          <Ionicons name="chevron-down" size={16} color={theme.colors.textPrimary} />
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity 
+            style={styles.groupSelector} 
+            onPress={() => setShowGroupPicker(true)}
+          >
+            <Text style={styles.groupSelectorText} numberOfLines={1}>
+              {selectedGroup ? selectedGroup.name : '그룹 선택'}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={theme.colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
 
-      {/* 달력 */}
-      <Calendar
-        current={format(currentMonth, 'yyyy-MM-dd')}
-        onDayPress={handleDayPress}
-        onMonthChange={handleMonthChange}
-        markingType={'custom'}
-        markedDates={markedDates}
-        maxDate={format(new Date(), 'yyyy-MM-dd')}
-        theme={{
-          calendarBackground: theme.colors.background,
-          textSectionTitleColor: theme.colors.textSecondary,
-          dayTextColor: theme.colors.textPrimary,
-          todayTextColor: theme.colors.accent,
-          monthTextColor: theme.colors.textPrimary,
-          arrowColor: theme.colors.accent,
-        }}
-      />
+        {/* 달력 */}
+        <Calendar
+          current={format(currentMonth, 'yyyy-MM-dd')}
+          onDayPress={handleDayPress}
+          onMonthChange={handleMonthChange}
+          markingType={'custom'}
+          markedDates={markedDates}
+          maxDate={format(new Date(), 'yyyy-MM-dd')}
+          theme={{
+            calendarBackground: theme.colors.background,
+            textSectionTitleColor: theme.colors.textSecondary,
+            dayTextColor: theme.colors.textPrimary,
+            todayTextColor: theme.colors.accent,
+            monthTextColor: theme.colors.textPrimary,
+            arrowColor: theme.colors.accent,
+          }}
+        />
+      </ScrollView>
 
       {/* 슬라이드업 패널 (간단히 하단 렌더링) */}
       {selectedDate && archiveData[selectedDate] && (
@@ -266,6 +271,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     padding: 24,
     paddingBottom: 40,
+    maxHeight: '40%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.2,

@@ -12,7 +12,7 @@ export function getUserTier(streakCount: number = 0): TierInfo {
   if (streakCount < 3) {
     return {
       tier: 'NONE',
-      color: 'transparent',
+      color: '',
       label: '등급 없음',
       nextTierDays: 3 - streakCount,
       nextTierLabel: '🌿 반딧불',

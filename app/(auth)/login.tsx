@@ -15,10 +15,18 @@ export default function LoginScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
+  const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';
   const redirectUri = makeRedirectUri({
-    scheme: 'com.moeum.app',
+    scheme: 'moeum',
+    native: androidClientId
+      ? `${androidClientId.split('.').reverse().join('.')}:/oauthredirect`
+      : 'com.moeum.app:/',
     useProxy: false,
   });
+
+  useEffect(() => {
+    console.log("Generated Redirect URI:", redirectUri);
+  }, [redirectUri]);
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,

@@ -234,7 +234,7 @@ export default function MyScreen() {
             
             <View style={styles.tierInfo}>
               <Text style={styles.tierTitle}>현재 등급</Text>
-              <Text style={[styles.tierLabel, { color: tierInfo.isGradient && tierInfo.gradientColors ? tierInfo.gradientColors[0] : tierInfo.color }]}>
+              <Text style={[styles.tierLabel, { color: tierInfo.isGradient && tierInfo.gradientColors ? tierInfo.gradientColors[0] : (tierInfo.color || theme.colors.textSecondary) }]}>
                 {tierInfo.label}
               </Text>
             </View>
