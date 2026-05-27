@@ -5,8 +5,10 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { theme } from '../../constants/theme';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function SignUpScreen() {
+  const { completeProfile } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,15 +42,18 @@ export default function SignUpScreen() {
 
       // 2. Firestore users 컬렉션에 초기 데이터 저장
       await setDoc(doc(db, 'users', user.uid), {
-        nickname: nickname,
+        nickname: nickname.trim(),
         profileImage: '',
         statusMessage: '',
         createdAt: new Date(),
         streakCount: 0,
       });
 
-      // 가입 성공 시 _layout.tsx의 리다이렉트 로직에 의해 /(tabs) 또는 적절한 곳으로 이동됨
-      // (Profile이 이미 생성되었으므로 isProfileComplete가 true가 됨)
+      // 3. 닉네임을 입력받았으므로 프로필 완료 상태로 업데이트
+      completeProfile();
+
+      // 4. 메인 화면으로 이동
+      router.replace('/(tabs)');
     } catch (error: any) {
       console.error(error);
       let msg = '회원가입 중 오류가 발생했습니다.';

@@ -1,52 +1,91 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { makeRedirectUri } from 'expo-auth-session';
+import * as GoogleAuthSession from 'expo-auth-session/providers/google';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { FontAwesome } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
 
-WebBrowser.maybeCompleteAuthSession();
+if (Platform.OS === 'web') {
+  WebBrowser.maybeCompleteAuthSession();
+}
+
+// Native Google Sign-In Configuration
+if (Platform.OS !== 'web') {
+  GoogleSignin.configure({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    offlineAccess: true,
+  });
+}
 
 export default function LoginScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '';
-  const redirectUri = makeRedirectUri({
-    scheme: 'moeum',
-    native: androidClientId
-      ? `${androidClientId.split('.').reverse().join('.')}:/oauthredirect`
-      : 'com.moeum.app:/',
-    useProxy: false,
-  });
-
-  useEffect(() => {
-    console.log("Generated Redirect URI:", redirectUri);
-  }, [redirectUri]);
-
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+  // Web-specific Google Auth Session
+  const [request, response, promptAsync] = GoogleAuthSession.useIdTokenAuthRequest({
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    redirectUri,
   });
 
+  // Handle Web Response
   useEffect(() => {
-    if (response?.type === 'success') {
+    if (Platform.OS === 'web' && response?.type === 'success') {
       const { id_token } = response.params;
       const credential = GoogleAuthProvider.credential(id_token);
       
       setLoading(true);
       signInWithCredential(auth, credential).catch((error) => {
-        console.error("Google login error:", error);
+        console.error("Web Google login error:", error);
         setLoading(false);
       });
     }
   }, [response]);
+
+  const handleGoogleLogin = async () => {
+    if (Platform.OS === 'web') {
+      setLoading(true);
+      try {
+        await promptAsync();
+      } catch (error) {
+        console.error("Web login prompt error:", error);
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Native Logic
+    try {
+      setLoading(true);
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo.data?.idToken;
+
+      if (!idToken) {
+        throw new Error('ID Token not found');
+      }
+
+      const credential = GoogleAuthProvider.credential(idToken);
+      await signInWithCredential(auth, credential);
+    } catch (error: any) {
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // user cancelled
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        // progress
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert('오류', 'Google Play 서비스를 사용할 수 없습니다.');
+      } else {
+        console.error("Native Google login error:", error);
+        Alert.alert('오류', 'Google 로그인 중 오류가 발생했습니다.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const content = (
     <View style={styles.container}>
@@ -57,11 +96,8 @@ export default function LoginScreen() {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.googleButton}
-          onPress={() => {
-            setLoading(true);
-            promptAsync().catch(() => setLoading(false));
-          }}
-          disabled={!request || loading}
+          onPress={handleGoogleLogin}
+          disabled={(Platform.OS === 'web' && !request) || loading}
         >
           <FontAwesome name="google" size={24} color="#000" />
           <Text style={styles.googleButtonText}>

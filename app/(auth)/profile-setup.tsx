@@ -12,7 +12,9 @@ export default function ProfileSetupScreen() {
   const { user, completeProfile } = useAuth();
   const router = useRouter();
   const colorScheme = useColorScheme();
-  const [nickname, setNickname] = useState(user?.displayName || '');
+  const [nickname, setNickname] = useState(
+    user?.displayName && user.displayName !== '이름 없음' ? user.displayName : ''
+  );
   const [loading, setLoading] = useState(false);
 
   const handleSaveProfile = async () => {
