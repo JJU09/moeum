@@ -31,6 +31,7 @@ import { db, app } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '../../constants/theme';
 import { logError } from '../../lib/logger';
+import { StarPieceIcon } from '../../components/StarPieceIcon';
 
 interface ProductConfig {
   sku: string;
@@ -168,7 +169,10 @@ export default function ShopScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>별조각 상점</Text>
         <View style={styles.balancePill}>
-          <Text style={styles.balanceText}>⭐ {points}</Text>
+          <View style={styles.balanceInner}>
+            <StarPieceIcon size={14} />
+            <Text style={styles.balanceText}>{points}</Text>
+          </View>
         </View>
       </View>
 
@@ -190,7 +194,10 @@ export default function ShopScreen() {
               )}
               <View style={styles.cardLeft}>
                 <Text style={styles.productLabel}>{product.label}</Text>
-                <Text style={styles.starCount}>⭐ {product.stars.toLocaleString()}</Text>
+                <View style={styles.starCountRow}>
+                  <StarPieceIcon size={18} />
+                  <Text style={styles.starCount}>{product.stars.toLocaleString()}</Text>
+                </View>
               </View>
               <TouchableOpacity
                 style={[styles.buyBtn, purchasing === product.sku && styles.buyBtnDisabled]}
@@ -247,10 +254,20 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
   },
+  balanceInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
   balanceText: {
     fontSize: 14,
     fontWeight: '700',
     color: theme.colors.accent,
+  },
+  starCountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   scroll: {
     padding: 20,

@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { UserProfile } from '../../types';
 import { getUserTier } from '../../lib/badge';
 import { logError } from '../../lib/logger';
+import { StarPieceIcon } from '../../components/StarPieceIcon';
 
 export default function MyScreen() {
   const { user } = useAuth();
@@ -282,7 +283,10 @@ export default function MyScreen() {
           <View style={styles.pointsRow}>
             <View>
               <Text style={styles.streakTitle}>내 별조각</Text>
-              <Text style={styles.pointsValue}>⭐ {points}</Text>
+              <View style={styles.pointsValueRow}>
+                <StarPieceIcon size={20} />
+                <Text style={styles.pointsValue}>{points}</Text>
+              </View>
             </View>
             <TouchableOpacity
               style={styles.chargeButton}
@@ -483,11 +487,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 4,
   },
+  pointsValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
   pointsValue: {
     fontSize: 22,
     fontWeight: '700',
     color: theme.colors.textPrimary,
-    marginTop: 4,
   },
   chargeButton: {
     backgroundColor: theme.colors.accent,

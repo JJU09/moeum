@@ -16,6 +16,7 @@ import { theme } from '../constants/theme';
 import { upsertBid } from '../lib/auction';
 import { Bid } from '../types';
 import { logError } from '../lib/logger';
+import { StarPieceIcon } from './StarPieceIcon';
 
 interface AuctionBidModalProps {
   visible: boolean;
@@ -88,7 +89,10 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
           {/* Balance */}
             <View style={styles.balanceRow}>
               <Text style={styles.balanceLabel}>내 별조각</Text>
-              <Text style={styles.balanceValue}>✨ {userPoints}</Text>
+              <View style={styles.balanceValueRow}>
+                <StarPieceIcon size={16} />
+                <Text style={styles.balanceValue}>{userPoints}</Text>
+              </View>
             </View>
 
             {/* Question Input */}
@@ -174,7 +178,12 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.submitBtnText}>
-                  {existingBid ? `✨ ${bidPoints}별조각으로 다시 베팅하기` : `✨ ${bidPoints}별조각 베팅하기`}
+                  <View style={styles.submitBtnInner}>
+                    <StarPieceIcon size={16} />
+                    <Text style={styles.submitBtnText}>
+                      {existingBid ? `${bidPoints}별조각으로 다시 베팅하기` : `${bidPoints}별조각 베팅하기`}
+                    </Text>
+                  </View>
                 </Text>
               )}
             </TouchableOpacity>
@@ -255,10 +264,20 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontWeight: '500',
   },
+  balanceValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
   balanceValue: {
     fontSize: 16,
     fontWeight: '700',
     color: theme.colors.accent,
+  },
+  submitBtnInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   betLabelRow: {
     flexDirection: 'row',

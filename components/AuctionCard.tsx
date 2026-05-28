@@ -7,6 +7,7 @@ import { AuctionBidModal } from './AuctionBidModal';
 import { Auction, Bid } from '../types';
 import { theme } from '../constants/theme';
 import { logError } from '../lib/logger';
+import { StarPieceIcon } from './StarPieceIcon';
 
 interface AuctionCardProps {
   groupId: string;
@@ -73,7 +74,10 @@ export const AuctionCard: React.FC<AuctionCardProps> = ({ groupId, userId }) => 
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>✨ 별조각 경매</Text>
+        <View style={styles.titleRow}>
+          <StarPieceIcon size={16} />
+          <Text style={styles.title}>별조각 경매</Text>
+        </View>
         <Text style={styles.timer}>{formatCountdown(countdown)} 후 마감</Text>
       </View>
 
@@ -86,11 +90,14 @@ export const AuctionCard: React.FC<AuctionCardProps> = ({ groupId, userId }) => 
         onPress={() => setIsModalVisible(true)}
         activeOpacity={0.8}
       >
-        <Text style={styles.buttonText}>
-          {myBid
-            ? `✨ ${myBid.bidPoints}별조각 베팅 중 · 다시 베팅하기`
-            : '별조각 베팅하고 질문 던지기'}
-        </Text>
+        <View style={styles.buttonInner}>
+          <StarPieceIcon size={14} />
+          <Text style={styles.buttonText}>
+            {myBid
+              ? `${myBid.bidPoints}별조각 베팅 중 · 다시 베팅하기`
+              : '별조각 베팅하고 질문 던지기'}
+          </Text>
+        </View>
       </TouchableOpacity>
 
       <AuctionBidModal
@@ -122,6 +129,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  buttonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   title: {
     fontSize: 16,
