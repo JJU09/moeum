@@ -159,6 +159,8 @@ function RootLayoutNav({ loaded }: { loaded: boolean }) {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="auction" options={{ headerShown: false }} />
+        <Stack.Screen name="shop" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>
