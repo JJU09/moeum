@@ -3,12 +3,12 @@ import { StyleSheet, Text, View, Image, TouchableOpacity, TextInput, Alert, Scro
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
-import { db, auth, storage } from '../../lib/firebase';
+import { db, auth } from '../../lib/firebase';
 import { Avatar } from '../../components/Avatar';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { UserProfile } from '../../types';
@@ -17,7 +17,12 @@ import { getUserTier } from '../../lib/badge';
 export default function MyScreen() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  
+  const isMounted = React.useRef(true);
+
+  React.useEffect(() => {
+    return () => { isMounted.current = false; };
+  }, []);
+
   // Edit states
   const [editingNickname, setEditingNickname] = useState(false);
   const [nicknameInput, setNicknameInput] = useState('');
@@ -58,34 +63,38 @@ export default function MyScreen() {
     if (!result.canceled && result.assets[0].uri) {
       setUploading(true);
       try {
-        const response = await fetch(result.assets[0].uri);
-        const blob = await response.blob();
-        
-        const MAX_SIZE = 2 * 1024 * 1024; // 2MB
-        if (blob.size > MAX_SIZE) {
-          Alert.alert('알림', '이미지 크기가 너무 큽니다. 2MB 이하의 이미지를 선택해주세요.');
-          setUploading(false);
-          return;
+        const uri = result.assets[0].uri;
+        const idToken = await user.getIdToken();
+        const bucket = process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET!;
+        const storagePath = `users/${user.uid}/profile.jpg`;
+        const encodedPath = encodeURIComponent(storagePath);
+
+        // uploadAsync는 파일 URI를 Android 네이티브 HTTP로 직접 전송 — JS Blob/ArrayBuffer 미사용
+        const uploadResult = await FileSystem.uploadAsync(
+          `https://firebasestorage.googleapis.com/v0/b/${bucket}/o?uploadType=media&name=${encodedPath}`,
+          uri,
+          {
+            httpMethod: 'POST',
+            uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+            headers: {
+              Authorization: `Bearer ${idToken}`,
+              'Content-Type': 'image/jpeg',
+            },
+          }
+        );
+
+        if (uploadResult.status !== 200) {
+          throw new Error(`Upload failed: ${uploadResult.status}`);
         }
-        
-        const fileRef = ref(storage, `users/${user.uid}/profile.jpg`);
-        console.log("Starting upload to:", fileRef.fullPath);
-        
-        await uploadBytes(fileRef, blob);
-        console.log("Upload successful");
-        
-        const downloadUrl = await getDownloadURL(fileRef);
+
+        const data = JSON.parse(uploadResult.body);
+        const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media&token=${data.downloadTokens}`;
+
         await updateProfile('profileImage', downloadUrl);
       } catch (error: any) {
-        console.error("Detailed error uploading image:", {
-          message: error.message,
-          code: error.code,
-          name: error.name,
-          serverResponse: error.serverResponse
-        });
         Alert.alert('오류', `프로필 이미지 업로드에 실패했습니다: ${error.message || '알 수 없는 오류'}`);
       } finally {
-        setUploading(false);
+        if (isMounted.current) setUploading(false);
       }
     }
   };
