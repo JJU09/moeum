@@ -1,106 +1,69 @@
 # 모음 (Moeum)
+<img src="assets/icon.png" width="128" height="128" alt="Moeum Logo" />
 
-모음은 가족, 친구, 연인 등 소중한 사람들과 함께 일상을 공유하고 소통할 수 있는 그룹 기반의 질문/답변 플랫폼입니다. 매일 제공되는 질문에 답변하며 서로에 대해 더 깊이 알아갈 수 있습니다.
+**"매일 하나의 질문으로 깊어지는 우리들의 기록, 모음"**
 
-## 🛠 기술 스택
+## 소개
+모음(Moeum)은 매일 새롭게 주어지는 질문에 답하며 소중한 사람들과 생각을 나누는 프라이빗 커뮤니티 서비스입니다. 인공지능이 엄선한 질문을 통해 평소 나누지 못했던 깊은 이야기를 공유하고 서로를 더 잘 알아가는 시간을 가집니다.
 
-- **프레임워크**: Expo (v56.0.0), React Native
-- **언어**: TypeScript
-- **백엔드/데이터베이스**: Firebase (Authentication, Firestore, Cloud Functions, Cloud Messaging)
-- **상태 관리/라우팅**: Expo Router
-- **주요 라이브러리**: `@react-native-firebase/*`, `date-fns`, `react-native-calendars`
+- **매일 하나의 질문**: 매일 정해진 시간에 배달되는 특별한 질문에 답해 보세요.
+- **프라이빗 그룹**: 초대 코드를 통해 연결된 신뢰할 수 있는 사람들끼리만 이야기를 나눕니다.
 
-## 🚀 시작하기
+## 주요 기능
+- **오늘의 질문 (AI 자동 생성)**: LiteLLM(AI)이 매일 사용자들에게 영감을 줄 수 있는 새로운 질문을 자동으로 생성합니다.
+- **블라인드 룰**: 내가 먼저 답변을 작성해야만 다른 그룹원들의 피드가 공개됩니다. 솔직한 답변을 유도하는 모음만의 규칙입니다.
+- **그룹 시스템**: 초대 코드를 사용하여 가족, 친구, 연인 등 소중한 사람들로 구성된 프라이빗한 공간을 만듭니다.
+- **리액션 & 댓글**: 친구의 답변에 공감하는 이모지 리액션을 남기거나 댓글로 대화를 이어갈 수 있습니다.
+- **등급 시스템**: 활동 점수에 따라 '반딧불'부터 '여명'까지 성장하는 등급 시스템을 통해 꾸준한 기록을 독려합니다.
+- **아카이브**: 캘린더 뷰를 통해 과거에 주고받았던 질문과 답변들을 언제든 다시 꺼내볼 수 있습니다.
 
-### 사전 요구사항
-- Node.js 설치 (v18 이상 권장)
-- npm 또는 yarn 패키지 매니저
-- Expo CLI (`npm install -g expo-cli`)
-- Firebase 프로젝트 생성 및 설정 (자세한 내용은 `docs/ENV_SETUP.md` 참고)
+## 기술 스택
+- **Frontend**: Expo (React Native v56), TypeScript
+- **Backend**: Firebase (Firestore, Authentication, Cloud Storage, Functions)
+- **AI**: LiteLLM (매일 질문 자동 생성 로직 연동)
+- **CI/CD & Deployment**: EAS Build
 
-### 설치 및 실행
+## 시작하기
 
-1. 레포지토리를 클론합니다.
-   ```bash
-   git clone https://github.com/JJU09/moeum.git
-   cd moeum
-   ```
+### 필요 환경
+- [Node.js](https://nodejs.org/) (LTS 버전 권장)
+- [npm](https://www.npmjs.com/) 또는 [yarn](https://yarnpkg.com/)
+- [Expo Go](https://expo.dev/client) 앱 (모바일 테스트용)
 
-2. 패키지를 설치합니다.
-   ```bash
-   npm install
-   ```
-
-3. 환경변수를 설정합니다. (`.env.example`을 복사하여 `.env.local` 생성)
-   ```bash
-   cp .env.example .env.local
-   ```
-   > 환경변수 상세 설정 방법은 `docs/ENV_SETUP.md`를 확인하세요.
-
-4. 앱을 실행합니다.
-   ```bash
-   npm start
-   # 또는
-   npm run ios
-   npm run android
-   ```
-
-## 📁 프로젝트 구조
-
-```
-moeum/
-├── app/                  # Expo Router 기반의 화면(Screen) 컴포넌트
-│   ├── (auth)/           # 인증 관련 화면 (로그인, 회원가입, 프로필 설정 등)
-│   ├── (tabs)/           # 메인 탭 화면 (홈, 그룹, 내 정보, 기록 등)
-│   ├── archive/          # 아카이브 관련 화면
-│   ├── notices/          # 공지사항 관련 화면
-│   └── support/          # 고객지원 관련 화면
-├── components/           # 재사용 가능한 UI 컴포넌트
-├── constants/            # 테마, 색상 등 상수 정의
-├── contexts/             # React Context API (AuthContext, GroupContext 등)
-├── docs/                 # 프로젝트 문서
-├── functions/            # Firebase Cloud Functions 코드
-├── hooks/                # Custom React Hooks
-├── lib/                  # 비즈니스 로직 및 Firebase 서비스 연동 유틸리티
-├── types/                # TypeScript 타입 정의
-└── assets/               # 이미지, 폰트 등 정적 리소스
-```
-
-## ⚙️ 환경변수 설정 방법
-
-앱 실행 및 배포를 위해 루트 디렉토리의 `.env.local`과 Cloud Functions를 위한 `functions/.env` 설정이 필요합니다. 
-상세한 환경변수 설정 가이드와 Firebase 연동 방법은 [ENV_SETUP.md](./docs/ENV_SETUP.md) 문서를 참고해 주세요.
-
-## 📦 배포 방법
-
-### 1. 앱 배포 (EAS Build)
-Expo Application Services (EAS)를 사용하여 빌드합니다.
-
+### 설치 방법
 ```bash
-# EAS CLI 설치 및 로그인
-npm install -g eas-cli
-eas login
+# 저장소 복제
+git clone https://github.com/JJU09/moeum.git
+cd moeum
 
-# 프로젝트 설정 (최초 1회)
-eas build:configure
-
-# Android 빌드
-eas build --platform android --profile production
-
-# iOS 빌드
-eas build --platform ios --profile production
-```
-
-### 2. Cloud Functions 배포
-Firebase Cloud Functions를 배포합니다.
-
-```bash
-cd functions
+# 의존성 설치
 npm install
-npm run build
-firebase deploy --only functions
 ```
 
----
+### 환경변수 설정
+프로젝트 루트 디렉토리에 `.env.local` 파일을 생성하고 필요한 환경 변수를 설정합니다. (`.env.example` 파일을 참고하세요.)
 
-*자세한 기능 설명은 [FEATURES.md](./docs/FEATURES.md)를, 데이터베이스 구조는 [DATABASE.md](./docs/DATABASE.md)를 참고하세요.*
+```bash
+# .env.local 예시
+EXPO_PUBLIC_FIREBASE_API_KEY=your_api_key
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
+...
+```
+
+### 실행 방법
+```bash
+# 개발 서버 시작
+npx expo start
+
+# 또는 특정 플랫폼으로 바로 실행
+npm run ios     # iOS 시뮬레이터
+npm run android # 안드로이드 에뮬레이터
+```
+
+## 스크린샷
+| 홈 화면 | 피드 | 그룹 | 마이페이지 |
+| :---: | :---: | :---: | :---: |
+| ![홈](https://via.placeholder.com/200x400?text=Home) | ![피드](https://via.placeholder.com/200x400?text=Feed) | ![그룹](https://via.placeholder.com/200x400?text=Group) | ![마이페이지](https://via.placeholder.com/200x400?text=MyPage) |
+
+## 라이선스
+[MIT](LICENSE) © [Moeum Team]

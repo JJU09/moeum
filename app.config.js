@@ -12,6 +12,12 @@ export default {
       "backgroundColor": "#6D28D9"
     },
     "userInterfaceStyle": "automatic",
+    "updates": {
+      "url": "https://u.expo.dev/be0b3f43-f85d-4873-a193-128b9858d5f4"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.moeum.app",
