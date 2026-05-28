@@ -9,8 +9,7 @@ import { useGroups } from '../../contexts/GroupContext';
 import { AuctionCard } from '../../components/AuctionCard';
 import { theme } from '../../constants/theme';
 
-const getKSTHour = (): number =>
-  new Date(Date.now() + 9 * 60 * 60 * 1000).getHours();
+const getKSTHour = (): number => (new Date().getUTCHours() + 9) % 24;
 
 export default function AuctionScreen() {
   const { user } = useAuth();
