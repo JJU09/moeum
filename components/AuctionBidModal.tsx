@@ -148,10 +148,10 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
                 </TouchableOpacity>
               ))}
               <TouchableOpacity
-                style={[styles.quickBtn, styles.allInBtn]}
+                style={styles.quickBtn}
                 onPress={() => setBidPoints(userPoints)}
               >
-                <Text style={[styles.quickBtnText, styles.allInText]}>All-in</Text>
+                <Text style={styles.quickBtnText}>All-in</Text>
               </TouchableOpacity>
             </View>
 
@@ -342,16 +342,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-  allInBtn: {
-    borderColor: theme.colors.accent,
-  },
   quickBtnText: {
     fontSize: 14,
     fontWeight: '600',
     color: theme.colors.textPrimary,
-  },
-  allInText: {
-    color: theme.colors.accent,
   },
   disclaimer: {
     fontSize: 12,
