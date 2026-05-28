@@ -7,11 +7,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   ScrollView,
-  Keyboard,
-  KeyboardEvent,
 } from 'react-native';
 import { theme } from '../constants/theme';
 import { upsertBid } from '../lib/auction';
@@ -38,29 +37,13 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
   const [questionText, setQuestionText] = useState('');
   const [bidPoints, setBidPoints] = useState(10);
   const [submitting, setSubmitting] = useState(false);
-  const [keyboardOffset, setKeyboardOffset] = useState(0);
 
   useEffect(() => {
     if (visible) {
       setQuestionText(existingBid?.questionText ?? '');
       setBidPoints(existingBid?.bidPoints ?? 10);
-    } else {
-      setKeyboardOffset(0);
     }
   }, [visible, existingBid]);
-
-  useEffect(() => {
-    if (!visible) return;
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const onShow = Keyboard.addListener(showEvent, (e: KeyboardEvent) => {
-      setKeyboardOffset(e.endCoordinates.height);
-    });
-    const onHide = Keyboard.addListener(hideEvent, () => {
-      setKeyboardOffset(0);
-    });
-    return () => { onShow.remove(); onHide.remove(); };
-  }, [visible]);
 
   const clampPoints = (val: number) => Math.min(userPoints, Math.max(1, val));
 
@@ -75,7 +58,10 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
     }
     setSubmitting(true);
     try {
-      await upsertBid(groupId, userId, { questionText: questionText.trim(), bidPoints });
+      await upsertBid(groupId, userId, {
+        questionText: questionText.trim(),
+        bidPoints,
+      });
       onClose();
     } catch (error) {
       logError('upsertBid error:', error);
@@ -85,23 +71,11 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
     }
   };
 
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      {/* 백드롭: absoluteFill로 배치, flex 컨테이너 없음 */}
-      <TouchableOpacity
-        style={styles.backdrop}
-        activeOpacity={1}
-        onPress={onClose}
-      />
-
-      {/* 시트: 키보드 높이만큼 bottom 이동 */}
-      <View style={[styles.sheet, { bottom: keyboardOffset }]}>
+  const sheetContent = (
+    <>
+      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
+      <View style={styles.sheet}>
+        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>별조각 베팅하기</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -110,104 +84,127 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <View style={styles.balanceRow}>
-            <Text style={styles.balanceLabel}>내 별조각</Text>
-            <Text style={styles.balanceValue}>✨ {userPoints}</Text>
-          </View>
+          {/* Balance */}
+            <View style={styles.balanceRow}>
+              <Text style={styles.balanceLabel}>내 별조각</Text>
+              <Text style={styles.balanceValue}>✨ {userPoints}</Text>
+            </View>
 
-          <Text style={styles.fieldLabel}>내일의 질문</Text>
-          <TextInput
-            style={styles.questionInput}
-            value={questionText}
-            onChangeText={setQuestionText}
-            placeholder="내일 우리 멤버들에게 던지고 싶은 질문을 적어주세요"
-            placeholderTextColor={theme.colors.textMuted}
-            multiline
-            maxLength={100}
-          />
-          <Text style={styles.charCount}>{questionText.length}/100</Text>
-
-          <Text style={styles.fieldLabel}>베팅할 별조각</Text>
-          <View style={styles.betRow}>
-            <TouchableOpacity
-              style={styles.stepBtn}
-              onPress={() => setBidPoints(clampPoints(bidPoints - 1))}
-            >
-              <Text style={styles.stepBtnText}>−</Text>
-            </TouchableOpacity>
+            {/* Question Input */}
+            <Text style={styles.fieldLabel}>내일의 질문</Text>
             <TextInput
-              style={styles.betInput}
-              value={String(bidPoints)}
-              onChangeText={(v) => {
-                const n = parseInt(v, 10);
-                if (!isNaN(n)) setBidPoints(clampPoints(n));
-              }}
-              keyboardType="number-pad"
-              selectTextOnFocus
+              style={styles.questionInput}
+              value={questionText}
+              onChangeText={setQuestionText}
+              placeholder="내일 우리 멤버들에게 던지고 싶은 질문을 적어주세요"
+              placeholderTextColor={theme.colors.textMuted}
+              multiline
+              maxLength={100}
             />
-            <TouchableOpacity
-              style={styles.stepBtn}
-              onPress={() => setBidPoints(clampPoints(bidPoints + 1))}
-            >
-              <Text style={styles.stepBtnText}>+</Text>
-            </TouchableOpacity>
-          </View>
+            <Text style={styles.charCount}>{questionText.length}/100</Text>
 
-          <View style={styles.quickRow}>
-            {[10, 50].map((amount) => (
+            {/* Bet Control */}
+            <Text style={styles.fieldLabel}>베팅할 별조각</Text>
+            <View style={styles.betRow}>
               <TouchableOpacity
-                key={amount}
-                style={styles.quickBtn}
-                onPress={() => setBidPoints(clampPoints(bidPoints + amount))}
+                style={styles.stepBtn}
+                onPress={() => setBidPoints(clampPoints(bidPoints - 1))}
               >
-                <Text style={styles.quickBtnText}>+{amount}</Text>
+                <Text style={styles.stepBtnText}>−</Text>
               </TouchableOpacity>
-            ))}
+              <TextInput
+                style={styles.betInput}
+                value={String(bidPoints)}
+                onChangeText={(v) => {
+                  const n = parseInt(v, 10);
+                  if (!isNaN(n)) setBidPoints(clampPoints(n));
+                }}
+                keyboardType="number-pad"
+                selectTextOnFocus
+              />
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={() => setBidPoints(clampPoints(bidPoints + 1))}
+              >
+                <Text style={styles.stepBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Quick Buttons */}
+            <View style={styles.quickRow}>
+              {[10, 50].map((amount) => (
+                <TouchableOpacity
+                  key={amount}
+                  style={styles.quickBtn}
+                  onPress={() => setBidPoints(clampPoints(bidPoints + amount))}
+                >
+                  <Text style={styles.quickBtnText}>+{amount}</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={[styles.quickBtn, styles.allInBtn]}
+                onPress={() => setBidPoints(userPoints)}
+              >
+                <Text style={[styles.quickBtnText, styles.allInText]}>All-in</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Disclaimer */}
+            <Text style={styles.disclaimer}>
+              💡 낙찰되지 않은 별조각은 자정에 100% 환불됩니다
+            </Text>
+
+            {/* Submit */}
             <TouchableOpacity
-              style={[styles.quickBtn, styles.allInBtn]}
-              onPress={() => setBidPoints(userPoints)}
+              style={[
+                styles.submitBtn,
+                (!questionText.trim() || bidPoints < 1 || bidPoints > userPoints || submitting) &&
+                  styles.submitBtnDisabled,
+              ]}
+              onPress={handleSubmit}
+              disabled={!questionText.trim() || bidPoints < 1 || bidPoints > userPoints || submitting}
             >
-              <Text style={[styles.quickBtnText, styles.allInText]}>All-in</Text>
+              {submitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.submitBtnText}>
+                  {existingBid ? `✨ ${bidPoints}별조각으로 수정하기` : `✨ ${bidPoints}별조각 베팅하기`}
+                </Text>
+              )}
             </TouchableOpacity>
-          </View>
-
-          <Text style={styles.disclaimer}>
-            💡 낙찰되지 않은 별조각은 자정에 100% 환불됩니다
-          </Text>
-
-          <TouchableOpacity
-            style={[
-              styles.submitBtn,
-              (!questionText.trim() || bidPoints < 1 || bidPoints > userPoints || submitting) &&
-                styles.submitBtnDisabled,
-            ]}
-            onPress={handleSubmit}
-            disabled={!questionText.trim() || bidPoints < 1 || bidPoints > userPoints || submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.submitBtnText}>
-                {existingBid ? `✨ ${bidPoints}별조각으로 수정하기` : `✨ ${bidPoints}별조각 베팅하기`}
-              </Text>
-            )}
-          </TouchableOpacity>
         </ScrollView>
       </View>
+    </>
+  );
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      {Platform.OS === 'ios' ? (
+        <KeyboardAvoidingView style={styles.overlay} behavior="padding">
+          {sheetContent}
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={styles.overlay}>{sheetContent}</View>
+      )}
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   backdrop: {
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   sheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
