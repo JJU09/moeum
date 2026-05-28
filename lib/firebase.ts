@@ -2,6 +2,7 @@ import { initializeApp, getApp, getApps } from 'firebase/app';
 import { initializeAuth, getReactNativePersistence, getAuth } from 'firebase/auth';
 import {
   initializeFirestore,
+  getFirestore,
   persistentLocalCache,
   persistentSingleTabManager,
   memoryLocalCache,
@@ -19,7 +20,9 @@ const firebaseConfig = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// 앱이 이미 초기화된 경우(핫 리로드 등) getApp() 재사용
+const isNewApp = getApps().length === 0;
+const app = isNewApp ? initializeApp(firebaseConfig) : getApp();
 
 let auth;
 if (Platform.OS === 'web') {
@@ -30,15 +33,20 @@ if (Platform.OS === 'web') {
   });
 }
 
-// 오프라인에서도 마지막으로 읽은 데이터를 보여주기 위해 로컬 캐시 활성화.
-// 네이티브(iOS/Android)는 persistentLocalCache, 웹은 memoryLocalCache 사용.
-const db = Platform.OS === 'web'
-  ? initializeFirestore(app, { localCache: memoryLocalCache() })
-  : initializeFirestore(app, {
-      localCache: persistentLocalCache({
-        tabManager: persistentSingleTabManager(undefined),
-      }),
-    });
+// initializeFirestore는 첫 초기화 시에만 호출 (중복 호출 시 에러).
+// 이미 초기화된 경우 getFirestore로 기존 인스턴스 반환.
+let db;
+if (isNewApp) {
+  db = Platform.OS === 'web'
+    ? initializeFirestore(app, { localCache: memoryLocalCache() })
+    : initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentSingleTabManager(undefined),
+        }),
+      });
+} else {
+  db = getFirestore(app);
+}
 
 const storage = getStorage(app);
 
