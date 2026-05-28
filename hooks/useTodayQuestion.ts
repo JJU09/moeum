@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { db } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { getTodayQuestion } from '../lib/question';
 import { Question } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
-export function useTodayQuestion() {
+export function useTodayQuestion(groupId?: string) {
   const [question, setQuestion] = useState<Question | null>(null);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
@@ -15,38 +14,18 @@ export function useTodayQuestion() {
       return;
     }
 
-    const fetchTodayQuestion = async () => {
-      try {
-        // Get today's date in KST
-        const now = new Date();
-        const kstTime = new Date(now.getTime() + (9 * 60 * 60 * 1000));
-        const todayDate = kstTime.toISOString().split('T')[0]; // YYYY-MM-DD
+    let cancelled = false;
+    setLoading(true);
 
-        // Seed 스크립트처럼 날짜 문자열(YYYY-MM-DD)을 바로 문서 ID로 사용합니다.
-        const questionRef = doc(db, 'questions', todayDate);
-        const snapshot = await getDoc(questionRef);
-        
-        if (snapshot.exists()) {
-          const data = snapshot.data();
-          // Seed 스크립트는 'content' 필드를 사용하므로, 프론트엔드의 'text' 필드와 호환되게 매핑합니다.
-          setQuestion({ 
-            id: snapshot.id, 
-            ...data,
-            text: data.content || data.text || '' 
-          } as Question);
-        } else {
-          setQuestion(null);
-        }
-      } catch (error) {
-        console.error('Error fetching today question:', error);
-        setQuestion(null);
-      } finally {
+    getTodayQuestion(groupId ?? '').then((q) => {
+      if (!cancelled) {
+        setQuestion(q);
         setLoading(false);
       }
-    };
+    });
 
-    fetchTodayQuestion();
-  }, [user]);
+    return () => { cancelled = true; };
+  }, [user, groupId]);
 
   return { question, loading };
 }

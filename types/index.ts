@@ -7,12 +7,33 @@ export interface UserProfile {
   streakCount?: number;
   lastAnsweredDate?: string;
   badges?: string[];
+  points?: number;
+  lastPointDate?: string;
 }
 
 export interface Question {
   id: string;
   text: string;
   date: string; // 'YYYY-MM-DD' 형식
+  isCustom?: boolean;
+  winnerNickname?: string;
+}
+
+export interface Auction {
+  participantCount: number;
+  status: 'open' | 'processing' | 'closed';
+  winningQuestion: string;
+  winnerId: string;
+  winnerNickname: string;
+  createdAt: any; // Firestore Timestamp
+}
+
+export interface Bid {
+  userId: string;
+  questionText: string;
+  bidPoints: number;
+  createdAt: any; // Firestore Timestamp
+  updatedAt: any; // Firestore Timestamp
 }
 
 export interface Comment {

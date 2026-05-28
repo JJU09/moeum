@@ -5,7 +5,7 @@ import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, auth } from '../../lib/firebase';
 import { Avatar } from '../../components/Avatar';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -18,6 +18,7 @@ import { logError } from '../../lib/logger';
 export default function MyScreen() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [points, setPoints] = useState(0);
   const isMounted = React.useRef(true);
 
   React.useEffect(() => {
@@ -33,6 +34,15 @@ export default function MyScreen() {
 
   useEffect(() => {
     loadProfile();
+  }, [user]);
+
+  // 별조각 실시간 구독
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+      if (snap.exists()) setPoints(snap.data()?.points ?? 0);
+    });
+    return () => unsubscribe();
   }, [user]);
 
   const loadProfile = async () => {
@@ -267,6 +277,20 @@ export default function MyScreen() {
               </Text>
             )}
           </View>
+
+          {/* 별조각 잔액 */}
+          <View style={styles.pointsRow}>
+            <View>
+              <Text style={styles.streakTitle}>내 별조각</Text>
+              <Text style={styles.pointsValue}>⭐ {points}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.chargeButton}
+              onPress={() => router.push('/shop')}
+            >
+              <Text style={styles.chargeButtonText}>충전하기</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -446,11 +470,35 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
+    marginBottom: 16,
   },
   nextTierText: {
     fontSize: 14,
     color: theme.colors.textSecondary,
     fontWeight: '500',
+  },
+  pointsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 4,
+  },
+  pointsValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginTop: 4,
+  },
+  chargeButton: {
+    backgroundColor: theme.colors.accent,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  chargeButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
   },
   settingItem: {
     flexDirection: 'row',

@@ -3,9 +3,14 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // 로그인한 사용자는 다른 유저 프로필 읽기 가능, 쓰기는 본인만
+    // points/lastPointDate 필드는 Cloud Functions만 수정 가능
     match /users/{userId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null
+                    && request.auth.uid == userId
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['points', 'lastPointDate']);
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
     // 로그인한 사용자는 질문 읽기 가능 (쓰기는 서버만)
@@ -60,6 +65,24 @@ service cloud.firestore {
     match /inquiries/{inquiryId} {
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
       allow read: if false;
+    }
+
+    // 경매 문서: 그룹 멤버 읽기 가능, 쓰기는 Cloud Functions만
+    match /groups/{groupId}/auctions/{dateStr} {
+      allow read: if request.auth != null;
+      allow write: if false;
+
+      // 입찰 문서: 본인 것만 읽기/쓰기 가능 (블라인드 보장)
+      match /bids/{userId} {
+        allow read, write: if request.auth != null
+                           && request.auth.uid == userId;
+      }
+    }
+
+    // 구매 내역: 본인 것만 읽기, 쓰기는 Cloud Functions만
+    match /purchases/{userId}/history/{purchaseId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
     }
   }
 }
