@@ -168,7 +168,7 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.submitBtnText}>
-                  {existingBid ? `✨ ${bidPoints}별조각으로 수정하기` : `✨ ${bidPoints}별조각 베팅하기`}
+                  {existingBid ? `✨ ${bidPoints}별조각으로 다시 베팅하기` : `✨ ${bidPoints}별조각 베팅하기`}
                 </Text>
               )}
             </TouchableOpacity>

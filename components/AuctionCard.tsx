@@ -88,7 +88,7 @@ export const AuctionCard: React.FC<AuctionCardProps> = ({ groupId, userId }) => 
       >
         <Text style={styles.buttonText}>
           {myBid
-            ? `내 질문 수정하기 (현재 ${myBid.bidPoints}별조각 베팅 중)`
+            ? `✨ ${myBid.bidPoints}별조각 베팅 중 · 다시 베팅하기`
             : '별조각 베팅하고 질문 던지기'}
         </Text>
       </TouchableOpacity>
