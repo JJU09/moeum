@@ -21,6 +21,7 @@ import { useTodayAnswers } from '../../hooks/useTodayAnswers';
 import { QuestionCard } from '../../components/QuestionCard';
 import { AnswerInput } from '../../components/AnswerInput';
 import { AnswerFeed } from '../../components/AnswerFeed';
+import { logError } from '../../lib/logger';
 
 export default function TodayScreen() {
   const { user } = useAuth();
@@ -42,7 +43,7 @@ export default function TodayScreen() {
     try {
       await submitAnswer(selectedGroup.id, question.id, user.uid, content);
     } catch (error) {
-      console.error("Error submitting answer:", error);
+      logError("Error submitting answer:", error);
     }
   };
 

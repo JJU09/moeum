@@ -4,6 +4,7 @@ import { Stack, router } from 'expo-router';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Notice } from '../../types';
+import { logError } from '../../lib/logger';
 
 export default function NoticeListScreen() {
   const [notices, setNotices] = useState<Notice[]>([]);
@@ -38,7 +39,7 @@ export default function NoticeListScreen() {
 
       setNotices(sortedNotices);
     } catch (error) {
-      console.error('Error fetching notices:', error);
+      logError('Error fetching notices:', error);
     } finally {
       setLoading(false);
     }

@@ -50,7 +50,7 @@ export default function NotificationSettingsScreen() {
         notification_reaction: r !== null ? JSON.parse(r) : true,
       });
     } catch (error) {
-      console.error('Failed to load notification settings', error);
+      logError('Failed to load notification settings', error);
     }
   };
 
@@ -60,7 +60,7 @@ export default function NotificationSettingsScreen() {
     try {
       await AsyncStorage.setItem(key, JSON.stringify(newValue));
     } catch (error) {
-      console.error(`Failed to save ${key}`, error);
+      logError(`Failed to save ${key}`, error);
     }
   };
 
@@ -137,6 +137,7 @@ export default function NotificationSettingsScreen() {
 }
 
 import { Platform } from 'react-native';
+import { logError } from '../../lib/logger';
 
 const styles = StyleSheet.create({
   container: {

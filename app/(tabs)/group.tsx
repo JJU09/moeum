@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useGroups } from '../../contexts/GroupContext';
 import { Group, createGroup, joinGroupWithCode } from '../../lib/group';
 import GroupCard from '../../components/GroupCard';
+import { logError } from '../../lib/logger';
 
 export default function GroupScreen() {
   const router = useRouter();
@@ -52,7 +53,7 @@ export default function GroupScreen() {
         ]);
       }, 300);
     } catch (error) {
-      console.error('Group create error:', error);
+      logError('Group create error:', error);
       setIsSubmitting(false);
       Alert.alert('오류', '그룹 생성에 실패했습니다.');
     }
@@ -89,7 +90,7 @@ export default function GroupScreen() {
         ]);
       }, 300);
     } catch (error: any) {
-      console.error('Group join error:', error);
+      logError('Group join error:', error);
       setIsSubmitting(false);
       Alert.alert('오류', error.message || '그룹 참여에 실패했습니다.');
     }

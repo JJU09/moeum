@@ -6,6 +6,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
+import { logError } from '../../lib/logger';
 
 export default function SignUpScreen() {
   const { completeProfile } = useAuth();
@@ -55,7 +56,7 @@ export default function SignUpScreen() {
       // 4. 메인 화면으로 이동
       router.replace('/(tabs)');
     } catch (error: any) {
-      console.error(error);
+      logError(error);
       let msg = '회원가입 중 오류가 발생했습니다.';
       if (error.code === 'auth/email-already-in-use') {
         msg = '이미 사용 중인 이메일입니다.';

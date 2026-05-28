@@ -1,6 +1,7 @@
 import { db } from './firebase';
 import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 import { Question } from '../types';
+import { logError } from './logger';
 
 export const getTodayQuestion = async (groupId: string): Promise<Question | null> => {
   // 실제 구현에서는 그룹별 질문이나 전역 오늘의 질문 로직에 맞게 조정
@@ -23,7 +24,7 @@ export const getTodayQuestion = async (groupId: string): Promise<Question | null
     const doc = snapshot.docs[0];
     return { id: doc.id, ...doc.data() } as Question;
   } catch (error) {
-    console.error('Error fetching today question:', error);
+    logError('Error fetching today question:', error);
     return null;
   }
 };

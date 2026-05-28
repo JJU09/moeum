@@ -8,6 +8,7 @@ import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { FontAwesome } from '@expo/vector-icons';
 import { theme } from '../../constants/theme';
+import { logError } from '../../lib/logger';
 
 if (Platform.OS === 'web') {
   WebBrowser.maybeCompleteAuthSession();
@@ -40,7 +41,7 @@ export default function LoginScreen() {
       
       setLoading(true);
       signInWithCredential(auth, credential).catch((error) => {
-        console.error("Web Google login error:", error);
+        logError("Web Google login error:", error);
         setLoading(false);
       });
     }
@@ -52,7 +53,7 @@ export default function LoginScreen() {
       try {
         await promptAsync();
       } catch (error) {
-        console.error("Web login prompt error:", error);
+        logError("Web login prompt error:", error);
         setLoading(false);
       }
       return;
@@ -79,7 +80,7 @@ export default function LoginScreen() {
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         Alert.alert('오류', 'Google Play 서비스를 사용할 수 없습니다.');
       } else {
-        console.error("Native Google login error:", error);
+        logError("Native Google login error:", error);
         Alert.alert('오류', 'Google 로그인 중 오류가 발생했습니다.');
       }
     } finally {

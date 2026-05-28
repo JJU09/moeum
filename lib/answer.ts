@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { Answer } from '../types';
+import { logError } from './logger';
 
 export const submitAnswer = async (
   groupId: string, 
@@ -152,6 +153,6 @@ export const subscribeToAnswers = (
     });
     callback(answers);
   }, (error) => {
-    console.error("Error subscribing to answers:", error);
+    logError("Error subscribing to answers:", error);
   });
 };

@@ -1,6 +1,7 @@
 import { addDoc, collection, getDocs, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 import { db } from './firebase';
 import { Comment } from '../types';
+import { logError } from './logger';
 
 export const addComment = async (
   answerId: string,
@@ -20,7 +21,7 @@ export const addComment = async (
       createdAt: serverTimestamp(),
     });
   } catch (error) {
-    console.error('Error adding comment:', error);
+    logError('Error adding comment:', error);
     throw error;
   }
 };
@@ -45,7 +46,7 @@ export const getComments = (
       onUpdate(comments);
     },
     (error) => {
-      console.error('Error fetching comments:', error);
+      logError('Error fetching comments:', error);
       // 색인 에러 등으로 실패 시 빈 배열로 콜백하여 앱 멈춤 방지
       onUpdate([]);
     }

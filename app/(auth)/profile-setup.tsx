@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import Colors from '../../constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { FontAwesome } from '@expo/vector-icons';
+import { logError } from '../../lib/logger';
 
 export default function ProfileSetupScreen() {
   const { user, completeProfile } = useAuth();
@@ -43,7 +44,7 @@ export default function ProfileSetupScreen() {
         router.replace('/(tabs)');
       }, 100);
     } catch (error) {
-      console.error(error);
+      logError(error);
       Alert.alert('오류', '프로필 저장 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
