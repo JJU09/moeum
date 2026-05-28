@@ -71,29 +71,20 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
     }
   };
 
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <KeyboardAvoidingView
-        style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-        <View style={styles.sheet}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>별조각 베팅하기</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Text style={styles.closeBtnText}>✕</Text>
-            </TouchableOpacity>
-          </View>
+  const sheetContent = (
+    <>
+      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
+      <View style={styles.sheet}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>별조각 베팅하기</Text>
+          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <Text style={styles.closeBtnText}>✕</Text>
+          </TouchableOpacity>
+        </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {/* Balance */}
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          {/* Balance */}
             <View style={styles.balanceRow}>
               <Text style={styles.balanceLabel}>내 별조각</Text>
               <Text style={styles.balanceValue}>✨ {userPoints}</Text>
@@ -181,9 +172,25 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
                 </Text>
               )}
             </TouchableOpacity>
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
+        </ScrollView>
+      </View>
+    </>
+  );
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      {Platform.OS === 'ios' ? (
+        <KeyboardAvoidingView style={styles.overlay} behavior="padding">
+          {sheetContent}
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={styles.overlay}>{sheetContent}</View>
+      )}
     </Modal>
   );
 };
