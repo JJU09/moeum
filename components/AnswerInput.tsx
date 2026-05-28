@@ -18,7 +18,8 @@ export const AnswerInput: React.FC<AnswerInputProps> = ({ onSubmit, answerCount 
 
   const handleSubmit = () => {
     if (isValidLength) {
-      onSubmit(content);
+      const normalized = content.replace(/\n{3,}/g, '\n\n').trim();
+      onSubmit(normalized);
     }
   };
 
@@ -32,6 +33,7 @@ export const AnswerInput: React.FC<AnswerInputProps> = ({ onSubmit, answerCount 
         <TextInput
           style={styles.input}
           multiline
+          scrollEnabled
           placeholder="오늘의 답변을 남겨주세요 (1~200자)"
           placeholderTextColor={theme.colors.textMuted}
           value={content}
@@ -90,6 +92,7 @@ const styles = StyleSheet.create({
   },
   input: {
     minHeight: 120,
+    maxHeight: 200,
     fontSize: 16,
     lineHeight: 24,
     color: theme.colors.textPrimary,

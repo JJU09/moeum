@@ -26,7 +26,9 @@ declare const global: {
 if (Platform.OS !== 'web' && global.ErrorUtils) {
   const previousHandler = global.ErrorUtils.getGlobalHandler();
   global.ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
-    crashlytics().recordError(error);
+    try {
+      crashlytics().recordError(error);
+    } catch {}
     previousHandler(error, isFatal);
   });
 }

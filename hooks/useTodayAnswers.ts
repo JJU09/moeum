@@ -19,9 +19,10 @@ export function useTodayAnswers(
       return;
     }
 
+    let isMounted = true;
     setLoading(true);
+
     const unsubscribe = subscribeToAnswers(groupId, questionId, async (newAnswers) => {
-      // Fetch latest userProfile (specifically streakCount) for each answer
       const enrichedAnswers = await Promise.all(
         newAnswers.map(async (answer) => {
           try {
@@ -43,12 +44,17 @@ export function useTodayAnswers(
           return answer;
         })
       );
-      
-      setAnswers(enrichedAnswers);
-      setLoading(false);
+
+      if (isMounted) {
+        setAnswers(enrichedAnswers);
+        setLoading(false);
+      }
     });
 
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, [groupId, questionId]);
 
   const hasAnswered = useMemo(() => {

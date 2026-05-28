@@ -52,13 +52,15 @@ export default {
       "@react-native-firebase/crashlytics",
       "@react-native-firebase/messaging",
       "@react-native-google-signin/google-signin",
+      "react-native-iap",
       [
         "expo-build-properties",
         {
           "android": {
             "minSdkVersion": 24,
             "compileSdkVersion": 36,
-            "targetSdkVersion": 36
+            "targetSdkVersion": 36,
+            "kotlinVersion": "2.0.21"
           }
         }
       ]

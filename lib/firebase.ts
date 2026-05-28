@@ -28,9 +28,9 @@ let auth;
 if (Platform.OS === 'web') {
   auth = getAuth(app);
 } else {
-  auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage)
-  });
+  auth = isNewApp
+    ? initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) })
+    : getAuth(app);
 }
 
 // initializeFirestore는 첫 초기화 시에만 호출 (중복 호출 시 에러).

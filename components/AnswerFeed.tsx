@@ -163,6 +163,7 @@ const AnimatedCard = React.memo(({
           <TextInput
             style={styles.editInput}
             multiline
+            scrollEnabled
             value={editContent}
             onChangeText={setEditContent}
             maxLength={maxLength}
@@ -221,7 +222,7 @@ const AnimatedCard = React.memo(({
         )}
       </View>
       
-      <Text style={styles.content}>{item.content}</Text>
+      <Text style={styles.content}>{item.content.replace(/\n{3,}/g, '\n\n')}</Text>
       
       {renderReactionButtons(item)}
     </Animated.View>
@@ -586,6 +587,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     minHeight: 100,
+    maxHeight: 200,
     fontSize: 16,
     lineHeight: 24,
     color: theme.colors.textPrimary,

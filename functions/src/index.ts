@@ -1,6 +1,8 @@
 import * as admin from "firebase-admin";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onDocumentUpdated, onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { google } from "googleapis";
 
 admin.initializeApp();
 
@@ -396,3 +398,127 @@ export const onCommentCreated = onDocumentCreated("comments/{commentId}", async 
     }
   }
 });
+
+// 상품 ID → 별조각 수량 매핑
+const PRODUCT_POINTS: { [key: string]: number } = {
+  starpiece_100: 100,
+  starpiece_550: 550,
+  starpiece_1200: 1200,
+};
+
+// FN-04: 인앱 결제 영수증 검증 후 별조각 지급
+// 환경 변수:
+//   APPLE_SHARED_SECRET — App Store Connect 공유 시크릿
+//   Google Play: 기본 서비스 계정 자격증명 사용 (Cloud Functions 실행 환경)
+//   Google Play Console에서 서비스 계정에 Android Publisher API 권한 부여 필요
+export const verifyPurchaseAndGrantPoints = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const db = admin.firestore();
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+
+    const { receipt, productId, platform } = request.data as {
+      receipt: string;
+      productId: string;
+      platform: "android" | "ios";
+    };
+
+    if (!receipt || !productId || !platform) {
+      throw new HttpsError("invalid-argument", "필수 파라미터가 누락되었습니다.");
+    }
+
+    const pointsToGrant = PRODUCT_POINTS[productId];
+    if (!pointsToGrant) {
+      throw new HttpsError("invalid-argument", `알 수 없는 상품 ID: ${productId}`);
+    }
+
+    // 플랫폼별 영수증 검증
+    if (platform === "ios") {
+      await verifyAppleReceipt(receipt, productId);
+    } else {
+      await verifyGooglePurchase(receipt, productId);
+    }
+
+    // 중복 지급 방지: receiptToken으로 기존 구매 내역 확인
+    const purchaseRef = db.collection("purchases").doc(uid).collection("history");
+    const existingQuery = await purchaseRef.where("receiptToken", "==", receipt).limit(1).get();
+    if (!existingQuery.empty) {
+      throw new HttpsError("already-exists", "이미 처리된 영수증입니다.");
+    }
+
+    // Transaction으로 포인트 지급 + 구매 내역 기록
+    await db.runTransaction(async (tx) => {
+      const userRef = db.collection("users").doc(uid);
+      tx.update(userRef, {
+        points: admin.firestore.FieldValue.increment(pointsToGrant),
+      });
+      const newPurchaseRef = purchaseRef.doc();
+      tx.set(newPurchaseRef, {
+        productId,
+        points: pointsToGrant,
+        platform,
+        receiptToken: receipt,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    console.log(`User ${uid} granted ${pointsToGrant} points for ${productId} (${platform})`);
+    return { success: true, pointsGranted: pointsToGrant };
+  }
+);
+
+async function verifyAppleReceipt(receipt: string, productId: string): Promise<void> {
+  const sharedSecret = process.env.APPLE_SHARED_SECRET;
+  const body = JSON.stringify({ "receipt-data": receipt, ...(sharedSecret && { password: sharedSecret }) });
+
+  // Production 먼저 시도, 21007 응답 시 Sandbox로 재시도
+  for (const url of [
+    "https://buy.itunes.apple.com/verifyReceipt",
+    "https://sandbox.itunes.apple.com/verifyReceipt",
+  ]) {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+    const data = await response.json() as { status: number; receipt?: { in_app?: { product_id: string }[] } };
+
+    if (data.status === 21007) continue; // sandbox receipt on production endpoint → retry sandbox
+
+    if (data.status !== 0) {
+      throw new HttpsError("invalid-argument", `Apple 영수증 검증 실패: status ${data.status}`);
+    }
+
+    const inApp = data.receipt?.in_app ?? [];
+    const valid = inApp.some((p) => p.product_id === productId);
+    if (!valid) {
+      throw new HttpsError("invalid-argument", "영수증에 해당 상품이 없습니다.");
+    }
+    return;
+  }
+  throw new HttpsError("invalid-argument", "Apple 영수증 검증에 실패했습니다.");
+}
+
+async function verifyGooglePurchase(purchaseToken: string, productId: string): Promise<void> {
+  const packageName = "com.moeum.app";
+  const auth = new google.auth.GoogleAuth({
+    scopes: ["https://www.googleapis.com/auth/androidpublisher"],
+  });
+  const androidPublisher = google.androidpublisher({ version: "v3", auth });
+
+  const response = await androidPublisher.purchases.products.get({
+    packageName,
+    productId,
+    token: purchaseToken,
+  });
+
+  // purchaseState: 0 = Purchased, 1 = Cancelled, 2 = Pending
+  if (response.data.purchaseState !== 0) {
+    throw new HttpsError("invalid-argument", `유효하지 않은 구매 상태: ${response.data.purchaseState}`);
+  }
+  // consumptionState: 0 = Not consumed (기대값)
+  if (response.data.consumptionState !== 0) {
+    throw new HttpsError("already-exists", "이미 소비된 구매입니다.");
+  }
+}
