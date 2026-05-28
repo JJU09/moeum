@@ -250,9 +250,10 @@ export const onBidCreated = onDocumentCreated(
     const auctionRef = db
       .collection("groups").doc(groupId)
       .collection("auctions").doc(dateStr);
-    await auctionRef.update({
+    await auctionRef.set({
       participantCount: admin.firestore.FieldValue.increment(1),
-    });
+      status: 'open',
+    }, { merge: true });
   }
 );
 
