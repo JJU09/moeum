@@ -19,7 +19,8 @@ import { useTodayAnswers } from '../../hooks/useTodayAnswers';
 import { QuestionCard } from '../../components/QuestionCard';
 import { AnswerInput } from '../../components/AnswerInput';
 import { AnswerFeed } from '../../components/AnswerFeed';
-import { AuctionCard } from '../../components/AuctionCard';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { logError } from '../../lib/logger';
 
 const getKSTHour = (): number =>
@@ -119,6 +120,18 @@ export default function TodayScreen() {
 
   const renderHeader = () => (
     <View>
+      {selectedGroup && (
+        <TouchableOpacity
+          style={styles.auctionBanner}
+          onPress={() => router.push('/auction')}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.auctionBannerText}>
+            {isAuctionTime ? '✨ 별조각 경매 진행 중' : '💌 오전 7시에 공개됩니다'}
+          </Text>
+          <Ionicons name="chevron-forward" size={14} color={theme.colors.accent} />
+        </TouchableOpacity>
+      )}
       <QuestionCard
         questionText={question?.text}
         isCustom={question?.isCustom}
@@ -128,20 +141,6 @@ export default function TodayScreen() {
         <AnswerInput onSubmit={handleAnswerSubmit} answerCount={answers.length} />
       )}
       {hasAnswered && <View style={{ height: 16 }} />}
-
-      {selectedGroup && isAuctionTime && (
-        <AuctionCard groupId={selectedGroup.id} userId={user.uid} />
-      )}
-      {selectedGroup && !isAuctionTime && (
-        <View style={styles.waitingCard}>
-          <Text style={styles.waitingTitle}>
-            오늘 우리 그룹의 질문 정산이 완료되었습니다 💌
-          </Text>
-          <Text style={styles.waitingSubtitle}>
-            과연 누구의 질문이 채택되었을까요?{'\n'}오전 7시에 배달됩니다!
-          </Text>
-        </View>
-      )}
     </View>
   );
 
@@ -199,29 +198,23 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
-  waitingCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.border.radius,
-    padding: 24,
-    marginBottom: 16,
+  auctionBanner: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.colors.surfaceLight,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginTop: 8,
+    marginBottom: 4,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-  waitingTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: 8,
-    ...theme.typography.koreanText,
-  },
-  waitingSubtitle: {
+  auctionBannerText: {
     fontSize: 13,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    ...theme.typography.koreanText,
+    fontWeight: '600',
+    color: theme.colors.accent,
   },
   // Modal Styles
   modalOverlay: {
