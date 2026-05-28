@@ -67,8 +67,8 @@ export const AuctionCard: React.FC<AuctionCardProps> = ({ groupId, userId }) => 
     return () => clearInterval(timer);
   }, []);
 
-  // 경매가 없거나 open 상태가 아니면 미표시
-  if (!auction || auction.status !== 'open') return null;
+  // 정산 완료된 경우만 미표시 (문서 없음 = 아직 생성 전, 정상 표시)
+  if (auction?.status === 'closed') return null;
 
   return (
     <View style={styles.container}>
@@ -78,7 +78,7 @@ export const AuctionCard: React.FC<AuctionCardProps> = ({ groupId, userId }) => 
       </View>
 
       <Text style={styles.participantCount}>
-        현재 {auction.participantCount}명 참여 중
+        현재 {auction?.participantCount ?? 0}명 참여 중
       </Text>
 
       <TouchableOpacity
