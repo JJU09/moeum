@@ -45,15 +45,16 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
     }
   }, [visible, existingBid]);
 
-  const clampPoints = (val: number) => Math.min(userPoints, Math.max(1, val));
+  const minBid = existingBid?.bidPoints ?? 1;
+  const clampPoints = (val: number) => Math.min(userPoints, Math.max(minBid, val));
 
   const handleSubmit = async () => {
     if (!questionText.trim()) {
       Alert.alert('알림', '질문을 입력해주세요.');
       return;
     }
-    if (bidPoints < 1 || bidPoints > userPoints) {
-      Alert.alert('알림', `1~${userPoints} 사이의 별조각을 베팅해주세요.`);
+    if (bidPoints < minBid || bidPoints > userPoints) {
+      Alert.alert('알림', `${minBid}~${userPoints} 사이의 별조각을 베팅해주세요.`);
       return;
     }
     setSubmitting(true);
@@ -91,7 +92,7 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
             </View>
 
             {/* Question Input */}
-            <Text style={styles.fieldLabel}>내일의 질문</Text>
+            <Text style={[styles.fieldLabel, { marginBottom: 8 }]}>내일의 질문</Text>
             <TextInput
               style={styles.questionInput}
               value={questionText}
@@ -104,7 +105,12 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
             <Text style={styles.charCount}>{questionText.length}/100</Text>
 
             {/* Bet Control */}
-            <Text style={styles.fieldLabel}>베팅할 별조각</Text>
+            <View style={styles.betLabelRow}>
+              <Text style={styles.fieldLabel}>베팅할 별조각</Text>
+              {existingBid && (
+                <Text style={styles.minBidHint}>최소 {minBid}별조각</Text>
+              )}
+            </View>
             <View style={styles.betRow}>
               <TouchableOpacity
                 style={styles.stepBtn}
@@ -158,11 +164,11 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
             <TouchableOpacity
               style={[
                 styles.submitBtn,
-                (!questionText.trim() || bidPoints < 1 || bidPoints > userPoints || submitting) &&
+                (!questionText.trim() || bidPoints < minBid || bidPoints > userPoints || submitting) &&
                   styles.submitBtnDisabled,
               ]}
               onPress={handleSubmit}
-              disabled={!questionText.trim() || bidPoints < 1 || bidPoints > userPoints || submitting}
+              disabled={!questionText.trim() || bidPoints < minBid || bidPoints > userPoints || submitting}
             >
               {submitting ? (
                 <ActivityIndicator color="#fff" />
@@ -254,11 +260,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.accent,
   },
+  betLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   fieldLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: theme.colors.textSecondary,
-    marginBottom: 8,
+  },
+  minBidHint: {
+    fontSize: 12,
+    color: theme.colors.accent,
   },
   questionInput: {
     backgroundColor: theme.colors.surfaceLight,
