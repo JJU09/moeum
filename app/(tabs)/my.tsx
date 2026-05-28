@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { UserProfile } from '../../types';
 import { getUserTier } from '../../lib/badge';
+import { logError } from '../../lib/logger';
 
 export default function MyScreen() {
   const { user } = useAuth();
@@ -46,7 +47,7 @@ export default function MyScreen() {
         setStatusInput(data.statusMessage || '');
       }
     } catch (error) {
-      console.error("Error loading profile:", error);
+      logError("Error loading profile:", error);
     }
   };
 
@@ -106,7 +107,7 @@ export default function MyScreen() {
       await updateDoc(docRef, { [field]: value });
       setProfile(prev => prev ? { ...prev, [field]: value } : null);
     } catch (error) {
-      console.error(`Error updating ${field}:`, error);
+      logError(`Error updating ${field}:`, error);
       Alert.alert('오류', '프로필 업데이트에 실패했습니다.');
     }
   };
@@ -137,7 +138,7 @@ export default function MyScreen() {
             await signOut(auth);
             router.replace('/(auth)/login');
           } catch (error) {
-            console.error("Logout error:", error);
+            logError("Logout error:", error);
             window.alert("로그아웃 중 문제가 발생했습니다.");
           }
         };
@@ -156,7 +157,7 @@ export default function MyScreen() {
             await signOut(auth);
             router.replace('/(auth)/login');
           } catch (error) {
-            console.error("Logout error:", error);
+            logError("Logout error:", error);
             Alert.alert("오류", "로그아웃 중 문제가 발생했습니다.");
           }
         } 

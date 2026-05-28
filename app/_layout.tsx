@@ -8,10 +8,21 @@ import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GroupProvider } from '../contexts/GroupContext';
 import messaging from '@react-native-firebase/messaging';
+import crashlytics from '@react-native-firebase/crashlytics';
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import { Platform, ErrorUtils } from 'react-native';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { logError } from '../lib/logger';
+
+// 네이티브 환경에서 잡히지 않은 JS 예외를 Crashlytics로 전송
+if (Platform.OS !== 'web') {
+  const previousHandler = ErrorUtils.getGlobalHandler();
+  ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+    crashlytics().recordError(error);
+    previousHandler(error, isFatal);
+  });
+}
 
 export {
   ErrorBoundary,
@@ -83,7 +94,7 @@ function RootLayoutNav({ loaded }: { loaded: boolean }) {
           }
         }
       } catch (error) {
-        console.error('Push notification setup error:', error);
+        logError('Push notification setup error:', error);
       }
     }
 

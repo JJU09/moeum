@@ -1,6 +1,7 @@
 import { db } from './firebase';
 import { UserProfile } from '../types';
 import { 
+import { logError } from '../lib/logger';
   collection, 
   doc, 
   setDoc, 
@@ -120,7 +121,7 @@ export const joinGroupWithCode = async (code: string, userId: string): Promise<s
 
     return groupId;
   } catch (error: any) {
-    console.error('runTransaction failed:', error);
+    logError('runTransaction failed:', error);
     throw error;
   }
 };

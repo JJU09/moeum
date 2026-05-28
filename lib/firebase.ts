@@ -1,6 +1,11 @@
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { initializeAuth, getReactNativePersistence, getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentSingleTabManager,
+  memoryLocalCache,
+} from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
@@ -25,7 +30,16 @@ if (Platform.OS === 'web') {
   });
 }
 
-const db = getFirestore(app);
+// 오프라인에서도 마지막으로 읽은 데이터를 보여주기 위해 로컬 캐시 활성화.
+// 네이티브(iOS/Android)는 persistentLocalCache, 웹은 memoryLocalCache 사용.
+const db = Platform.OS === 'web'
+  ? initializeFirestore(app, { localCache: memoryLocalCache() })
+  : initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentSingleTabManager(undefined),
+      }),
+    });
+
 const storage = getStorage(app);
 
 export { app, auth, db, storage };

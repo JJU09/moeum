@@ -9,6 +9,7 @@ import { AnswerFeed } from '../../components/AnswerFeed';
 import { QuestionCard } from '../../components/QuestionCard';
 import { useAuth } from '../../contexts/AuthContext';
 import { useQuestionByDate } from '../../hooks/useQuestionByDate';
+import { logError } from '../../lib/logger';
 
 export default function ArchiveFeedScreen() {
   const { date, groupId } = useLocalSearchParams();
@@ -36,7 +37,7 @@ export default function ArchiveFeedScreen() {
           });
         setAnswers(ans);
       } catch (error) {
-        console.error("Archive answers load error:", error);
+        logError("Archive answers load error:", error);
       } finally {
         setAnswersLoading(false);
       }
