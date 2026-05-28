@@ -91,7 +91,7 @@ export const AuctionCard: React.FC<AuctionCardProps> = ({ groupId, userId }) => 
         activeOpacity={0.8}
       >
         <View style={styles.buttonInner}>
-          <StarPieceIcon size={14} />
+          <StarPieceIcon size={14} white />
           <Text style={styles.buttonText}>
             {myBid
               ? `${myBid.bidPoints}별조각 베팅 중 · 다시 베팅하기`

@@ -179,7 +179,7 @@ export const AuctionBidModal: React.FC<AuctionBidModalProps> = ({
               ) : (
                 <Text style={styles.submitBtnText}>
                   <View style={styles.submitBtnInner}>
-                    <StarPieceIcon size={16} />
+                    <StarPieceIcon size={16} white />
                     <Text style={styles.submitBtnText}>
                       {existingBid ? `${bidPoints}별조각으로 다시 베팅하기` : `${bidPoints}별조각 베팅하기`}
                     </Text>

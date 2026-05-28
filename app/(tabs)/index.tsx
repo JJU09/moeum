@@ -22,6 +22,7 @@ import { AnswerFeed } from '../../components/AnswerFeed';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { logError } from '../../lib/logger';
+import { StarPieceIcon } from '../../components/StarPieceIcon';
 
 const getKSTHour = (): number => (new Date().getUTCHours() + 9) % 24;
 
@@ -125,9 +126,13 @@ export default function TodayScreen() {
           onPress={() => router.push('/auction')}
           activeOpacity={0.7}
         >
-          <Text style={styles.auctionBannerText}>
-            {isAuctionTime ? '✨ 별조각 경매 진행 중' : '💌 오전 7시에 공개됩니다'}
-          </Text>
+          <View style={styles.auctionBannerLeft}>
+            {isAuctionTime && <StarPieceIcon size={13} />}
+            {!isAuctionTime && <Text>💌</Text>}
+            <Text style={styles.auctionBannerText}>
+              {isAuctionTime ? '별조각 경매 진행 중' : '오전 7시에 공개됩니다'}
+            </Text>
+          </View>
           <Ionicons name="chevron-forward" size={14} color={theme.colors.accent} />
         </TouchableOpacity>
       )}
@@ -209,6 +214,11 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     borderWidth: 1,
     borderColor: theme.colors.border,
+  },
+  auctionBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   auctionBannerText: {
     fontSize: 13,
