@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { Answer } from '../types';
-import { logError } from '../lib/logger';
+import { logError } from './logger';
 
 export const submitAnswer = async (
   groupId: string, 

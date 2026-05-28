@@ -1,7 +1,7 @@
 import { db } from './firebase';
 import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 import { Question } from '../types';
-import { logError } from '../lib/logger';
+import { logError } from './logger';
 
 export const getTodayQuestion = async (groupId: string): Promise<Question | null> => {
   // 실제 구현에서는 그룹별 질문이나 전역 오늘의 질문 로직에 맞게 조정

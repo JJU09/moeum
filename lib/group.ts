@@ -1,8 +1,8 @@
 import { db } from './firebase';
 import { UserProfile } from '../types';
-import { 
-import { logError } from '../lib/logger';
-  collection, 
+import { logError } from './logger';
+import {
+  collection,
   doc, 
   setDoc, 
   getDoc,

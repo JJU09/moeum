@@ -1,7 +1,7 @@
 import { addDoc, collection, getDocs, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 import { db } from './firebase';
 import { Comment } from '../types';
-import { logError } from '../lib/logger';
+import { logError } from './logger';
 
 export const addComment = async (
   answerId: string,
