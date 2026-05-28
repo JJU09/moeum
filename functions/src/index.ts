@@ -219,9 +219,14 @@ export const settleAuction = onSchedule(
 
         const batch = db.batch();
 
-        // 낙찰자 포인트 차감
-        batch.update(db.collection("users").doc(winnerUserId), {
-          points: admin.firestore.FieldValue.increment(-winnerData.bidPoints),
+        // 패자 별조각 환불 (베팅 시 이미 차감됐으므로)
+        bidsSnap.forEach((bidDoc) => {
+          const bid = bidDoc.data();
+          if (bid.userId !== winnerUserId) {
+            batch.update(db.collection("users").doc(bid.userId), {
+              points: admin.firestore.FieldValue.increment(bid.bidPoints),
+            });
+          }
         });
 
         // 경매 문서 업데이트
@@ -238,6 +243,66 @@ export const settleAuction = onSchedule(
         );
       })
     );
+  }
+);
+
+// 입찰 — 별조각 즉시 차감 (재베팅 시 차액만), 트랜잭션으로 초과 차감 방지
+export const placeBid = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+
+    const { groupId, questionText, bidPoints } = request.data as {
+      groupId: string;
+      questionText: string;
+      bidPoints: number;
+    };
+
+    if (!groupId || !questionText?.trim() || typeof bidPoints !== "number" || bidPoints < 1) {
+      throw new HttpsError("invalid-argument", "올바르지 않은 입력값입니다.");
+    }
+
+    const userId = request.auth.uid;
+    const db = admin.firestore();
+    const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+    const dateStr = kst.toISOString().split("T")[0]!;
+
+    const bidRef = db
+      .collection("groups").doc(groupId)
+      .collection("auctions").doc(dateStr)
+      .collection("bids").doc(userId);
+    const userRef = db.collection("users").doc(userId);
+
+    await db.runTransaction(async (tx) => {
+      const [bidSnap, userSnap] = await Promise.all([tx.get(bidRef), tx.get(userRef)]);
+
+      const existingBidPoints: number = bidSnap.exists ? (bidSnap.data()?.bidPoints ?? 0) : 0;
+      const pointDiff = bidPoints - existingBidPoints;
+
+      if (bidPoints < existingBidPoints) {
+        throw new HttpsError("invalid-argument", "현재 베팅보다 낮게 베팅할 수 없습니다.");
+      }
+
+      if (pointDiff > 0) {
+        const currentPoints: number = userSnap.data()?.points ?? 0;
+        if (currentPoints < pointDiff) {
+          throw new HttpsError("failed-precondition", "별조각이 부족합니다.");
+        }
+        tx.update(userRef, {
+          points: admin.firestore.FieldValue.increment(-pointDiff),
+        });
+      }
+
+      tx.set(bidRef, {
+        userId,
+        questionText: questionText.trim(),
+        bidPoints,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        ...(bidSnap.exists ? {} : { createdAt: admin.firestore.FieldValue.serverTimestamp() }),
+      }, { merge: true });
+    });
+
+    return { success: true };
   }
 );
 

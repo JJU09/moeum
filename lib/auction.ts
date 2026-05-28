@@ -1,41 +1,26 @@
-import { db } from './firebase';
+import { db, app } from './firebase';
 import {
-  collection,
   doc,
   getDoc,
-  setDoc,
   onSnapshot,
-  serverTimestamp,
 } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { Auction, Bid } from '../types';
 import { logError } from './logger';
 
 export const getKSTDateString = (): string => {
   const now = new Date();
-  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  return kst.toISOString().split('T')[0]!;
+  return new Date(now.getTime() + 9 * 60 * 60 * 1000).toISOString().split('T')[0]!;
 };
 
 export const upsertBid = async (
   groupId: string,
-  userId: string,
+  _userId: string,
   data: { questionText: string; bidPoints: number }
 ): Promise<void> => {
-  const date = getKSTDateString();
-  const bidRef = doc(db, 'groups', groupId, 'auctions', date, 'bids', userId);
-  const existing = await getDoc(bidRef);
-
-  await setDoc(
-    bidRef,
-    {
-      userId,
-      questionText: data.questionText,
-      bidPoints: data.bidPoints,
-      updatedAt: serverTimestamp(),
-      ...(existing.exists() ? {} : { createdAt: serverTimestamp() }),
-    },
-    { merge: true }
-  );
+  const functions = getFunctions(app, 'asia-northeast3');
+  const placeBid = httpsCallable(functions, 'placeBid');
+  await placeBid({ groupId, questionText: data.questionText, bidPoints: data.bidPoints });
 };
 
 export const getMyBid = async (
