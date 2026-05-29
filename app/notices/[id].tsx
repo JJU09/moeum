@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Notice } from '../../types';
+import { logError } from '../../lib/logger';
 
 export default function NoticeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -28,7 +29,7 @@ export default function NoticeDetailScreen() {
         } as Notice);
       }
     } catch (error) {
-      console.error('Error fetching notice detail:', error);
+      logError('Error fetching notice detail:', error);
     } finally {
       setLoading(false);
     }

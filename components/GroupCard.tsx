@@ -10,6 +10,8 @@ import { useGroups } from '../contexts/GroupContext';
 import CrownBadge from './CrownBadge';
 import { Avatar } from './Avatar';
 import { UserProfile } from '../types';
+import { getNickColor } from '../constants/shopItems';
+import { TierBadge } from './TierBadge';
 
 interface GroupCardProps {
   group: Group;
@@ -241,7 +243,13 @@ export default function GroupCard({ group, onPress }: GroupCardProps) {
                       streakCount={member.streakCount || 0}
                     />
                     <View style={styles.memberInfo}>
-                      <Text style={styles.memberName}>{member.nickname}</Text>
+                      <Text style={[
+                        styles.memberName,
+                        member.equippedNickEffect
+                          ? { color: getNickColor(member.equippedNickEffect) ?? undefined }
+                          : null,
+                      ]}>{member.nickname}</Text>
+                      <TierBadge streakCount={member.streakCount} size="sm" />
                       {member.id === group.createdBy && (
                         <View style={styles.memberCrownBadge}>
                           <CrownBadge size={18} />

@@ -1,21 +1,21 @@
 import { db } from './firebase';
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  updateDoc, 
-  query, 
-  where, 
+import {
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  query,
+  where,
   getDocs,
   getDoc,
   onSnapshot,
   serverTimestamp,
   arrayUnion,
   arrayRemove,
-  orderBy
+  orderBy,
 } from 'firebase/firestore';
-import { format, differenceInDays, parseISO } from 'date-fns';
 import { Answer } from '../types';
+import { logError } from './logger';
 
 export const submitAnswer = async (
   groupId: string, 
@@ -36,33 +36,14 @@ export const submitAnswer = async (
     throw new Error('이미 답변을 작성했습니다.');
   }
 
-  // Update streak and badges + get nickname
+  // 유저 정보 읽기 (닉네임, 프로필 이미지, 장착 아이템 스냅샷용)
   const userRef = doc(db, 'users', userId);
   const userSnap = await getDoc(userRef);
   const userData = userSnap.exists() ? userSnap.data() : null;
 
-  const today = new Date();
-  const todayStr = format(today, 'yyyy-MM-dd');
-  
-  let newStreakCount = userData?.streakCount || 0;
-  if (userData) {
-    const lastDateStr = userData.lastAnsweredDate;
-    if (lastDateStr !== todayStr) {
-      if (lastDateStr) {
-        const diffDays = differenceInDays(
-          parseISO(todayStr),
-          parseISO(lastDateStr)
-        );
-        if (diffDays === 1) {
-          newStreakCount += 1;
-        } else {
-          newStreakCount = 1;
-        }
-      } else {
-        newStreakCount = 1;
-      }
-    }
-  }
+  // streak 계산은 Cloud Function(onAnswerCreatedUpdateStreak)이 담당.
+  // 답변 문서에는 현재 streak을 스냅샷으로 기록 (피드 즉시 표시용).
+  const currentStreak = userData?.streakCount || 0;
 
   const answerData = {
     groupId,
@@ -70,7 +51,12 @@ export const submitAnswer = async (
     userId,
     nickname: userData?.nickname || '',
     profileImage: userData?.profileImage || null,
-    streakCount: newStreakCount,
+    streakCount: currentStreak,
+    // 장착 이펙트 스냅샷 — 피드에서 바로 표시하기 위해 포함
+    equippedNickEffect: userData?.equippedNickEffect || null,
+    equippedBorder: userData?.equippedBorder || null,
+    equippedFeedBorder: userData?.equippedFeedBorder || null,
+    equippedFeedBg: userData?.equippedFeedBg || null,
     content,
     reactions: {
       "❤️": [],
@@ -81,37 +67,7 @@ export const submitAnswer = async (
     createdAt: serverTimestamp(),
   };
 
-  const answerRef = await addDoc(collection(db, 'answers'), answerData);
-
-  if (userSnap.exists() && userData) {
-    const lastDateStr = userData.lastAnsweredDate;
-
-    const updates: any = {
-      lastAnsweredDate: todayStr,
-      streakCount: newStreakCount
-    };
-
-    const newBadges = [];
-    const hour = today.getHours();
-    
-    if (hour >= 7 && hour < 11) {
-      newBadges.push('early_bird');
-    }
-    if (newStreakCount >= 7) {
-      newBadges.push('streak_7');
-    }
-    if (newStreakCount >= 30) {
-      newBadges.push('streak_30');
-    }
-
-    if (newBadges.length > 0) {
-      updates.badges = arrayUnion(...newBadges);
-    }
-
-    await updateDoc(userRef, updates);
-  }
-
-  return answerRef;
+  return addDoc(collection(db, 'answers'), answerData);
 };
 
 export const updateAnswer = async (answerId: string, content: string) => {
@@ -152,6 +108,6 @@ export const subscribeToAnswers = (
     });
     callback(answers);
   }, (error) => {
-    console.error("Error subscribing to answers:", error);
+    logError("Error subscribing to answers:", error);
   });
 };

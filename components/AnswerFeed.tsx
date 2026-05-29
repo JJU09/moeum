@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, Modal, TouchableWithoutFeedback } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, Modal, TouchableWithoutFeedback, StyleProp, TextStyle } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -11,6 +11,9 @@ import Animated, {
 import { theme } from '../constants/theme';
 import { toggleReaction, updateAnswer } from '../lib/answer';
 import { Avatar } from './Avatar';
+import { getNickColor, getFeedBorderColor, getFeedBgColors } from '../constants/shopItems';
+import { LinearGradient } from 'expo-linear-gradient';
+import { TierBadge } from './TierBadge';
 import { Ionicons } from '@expo/vector-icons';
 import { Answer, Comment } from '../types';
 import { addComment, getComments } from '../lib/comment';
@@ -26,6 +29,14 @@ interface AnswerFeedProps {
 }
 
 const EMOJIS = ['❤️', '🥹', '😂', '👏'];
+
+/** 닉네임 이펙트 아이템 ID → TextStyle 변환 */
+function getNickStyle(effectId?: string | null): StyleProp<TextStyle> {
+  if (!effectId) return null;
+  const color = getNickColor(effectId);
+  if (color) return { color };
+  return null;
+}
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -130,7 +141,10 @@ const AnimatedCard = React.memo(({
             />
           </View>
             <View>
-              <Text style={styles.nickname}>{item.nickname || item.userProfile?.nickname || '익명'}</Text>
+              <View style={styles.nicknameRow}>
+                <Text style={styles.nickname}>{item.nickname || item.userProfile?.nickname || '익명'}</Text>
+                <TierBadge streakCount={item.userProfile?.streakCount ?? item.streakCount} size="sm" />
+              </View>
               <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
             </View>
           </View>
@@ -163,6 +177,7 @@ const AnimatedCard = React.memo(({
           <TextInput
             style={styles.editInput}
             multiline
+            scrollEnabled
             value={editContent}
             onChangeText={setEditContent}
             maxLength={maxLength}
@@ -191,24 +206,58 @@ const AnimatedCard = React.memo(({
     );
   }
 
+  const feedBorderColor = getFeedBorderColor(
+    item.equippedFeedBorder || item.userProfile?.equippedFeedBorder
+  );
+  const feedBgColors = getFeedBgColors(
+    item.equippedFeedBg || item.userProfile?.equippedFeedBg
+  );
+
   return (
-    <Animated.View style={[styles.card, isMe && styles.myCard, animatedStyle]}>
+    <Animated.View style={[
+      styles.card,
+      isMe && styles.myCard,
+      feedBorderColor ? { borderColor: feedBorderColor, borderWidth: 2 } : null,
+      animatedStyle,
+    ]}>
+      {feedBgColors ? (
+        <LinearGradient
+          colors={feedBgColors as unknown as readonly [string, string, ...string[]]}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+      ) : null}
       <View style={styles.header}>
         <View style={styles.userInfo}>
           <View style={styles.avatarContainer}>
-            <Avatar 
-              profileImage={item.profileImage || item.userProfile?.profileImage} 
+            <Avatar
+              profileImage={item.profileImage || item.userProfile?.profileImage}
               nickname={item.nickname || item.userProfile?.nickname}
               streakCount={item.userProfile?.streakCount ?? item.streakCount ?? 0}
-              size={40} 
+              equippedBorder={item.equippedBorder || item.userProfile?.equippedBorder}
+              size={40}
             />
           </View>
           <View>
-            <Text style={styles.nickname}>{item.nickname || item.userProfile?.nickname || '익명'}</Text>
+            <View style={styles.nicknameRow}>
+              <Text
+                style={[
+                  styles.nickname,
+                  getNickStyle(item.equippedNickEffect || item.userProfile?.equippedNickEffect),
+                ]}
+              >
+                {item.nickname || item.userProfile?.nickname || '익명'}
+              </Text>
+              <TierBadge
+                streakCount={item.userProfile?.streakCount ?? item.streakCount}
+                size="sm"
+              />
+            </View>
             <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
           </View>
         </View>
-        
+
         {isMe && !isReadOnly && (
           <View style={styles.actionButtons}>
             <TouchableOpacity onPress={() => {
@@ -220,9 +269,9 @@ const AnimatedCard = React.memo(({
           </View>
         )}
       </View>
-      
-      <Text style={styles.content}>{item.content}</Text>
-      
+
+      <Text style={styles.content}>{item.content.replace(/\n{3,}/g, '\n\n')}</Text>
+
       {renderReactionButtons(item)}
     </Animated.View>
   );
@@ -482,6 +531,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    overflow: 'hidden',
   },
   myCard: {
     backgroundColor: theme.colors.surfaceLight,
@@ -499,6 +549,11 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     marginRight: 12,
+  },
+  nicknameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   nickname: {
     fontSize: 15,
@@ -586,6 +641,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     minHeight: 100,
+    maxHeight: 200,
     fontSize: 16,
     lineHeight: 24,
     color: theme.colors.textPrimary,

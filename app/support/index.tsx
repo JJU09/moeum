@@ -6,6 +6,7 @@ import { db } from '../../lib/firebase';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { router, Stack } from 'expo-router';
 import { UserProfile } from '../../types';
+import { logError } from '../../lib/logger';
 
 type Category = '문의' | '버그신고' | '기능제안' | '기타';
 const CATEGORIES: Category[] = ['문의', '버그신고', '기능제안', '기타'];
@@ -69,7 +70,7 @@ export default function SupportScreen() {
         );
       }
     } catch (error) {
-      console.error('문의 접수 Firestore 에러:', error);
+      logError('문의 접수 Firestore 에러:', error);
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.';
       
       if (Platform.OS === 'web') {

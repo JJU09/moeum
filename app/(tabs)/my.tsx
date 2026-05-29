@@ -5,7 +5,7 @@ import { theme } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, auth } from '../../lib/firebase';
 import { Avatar } from '../../components/Avatar';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -13,10 +13,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { UserProfile } from '../../types';
 import { getUserTier } from '../../lib/badge';
+import { logError } from '../../lib/logger';
+import { StarPieceIcon } from '../../components/StarPieceIcon';
+import { getNickColor } from '../../constants/shopItems';
+import { TierBadge } from '../../components/TierBadge';
 
 export default function MyScreen() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [points, setPoints] = useState(0);
+  const [equippedBorder, setEquippedBorder] = useState<string | undefined>();
+  const [equippedNickEffect, setEquippedNickEffect] = useState<string | undefined>();
   const isMounted = React.useRef(true);
 
   React.useEffect(() => {
@@ -34,6 +41,20 @@ export default function MyScreen() {
     loadProfile();
   }, [user]);
 
+  // 별조각 + 장착 아이템 실시간 구독
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setPoints(data?.points ?? 0);
+        setEquippedBorder(data?.equippedBorder ?? undefined);
+        setEquippedNickEffect(data?.equippedNickEffect ?? undefined);
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
+
   const loadProfile = async () => {
     if (!user) return;
     try {
@@ -46,7 +67,7 @@ export default function MyScreen() {
         setStatusInput(data.statusMessage || '');
       }
     } catch (error) {
-      console.error("Error loading profile:", error);
+      logError("Error loading profile:", error);
     }
   };
 
@@ -106,7 +127,7 @@ export default function MyScreen() {
       await updateDoc(docRef, { [field]: value });
       setProfile(prev => prev ? { ...prev, [field]: value } : null);
     } catch (error) {
-      console.error(`Error updating ${field}:`, error);
+      logError(`Error updating ${field}:`, error);
       Alert.alert('오류', '프로필 업데이트에 실패했습니다.');
     }
   };
@@ -137,7 +158,7 @@ export default function MyScreen() {
             await signOut(auth);
             router.replace('/(auth)/login');
           } catch (error) {
-            console.error("Logout error:", error);
+            logError("Logout error:", error);
             window.alert("로그아웃 중 문제가 발생했습니다.");
           }
         };
@@ -156,7 +177,7 @@ export default function MyScreen() {
             await signOut(auth);
             router.replace('/(auth)/login');
           } catch (error) {
-            console.error("Logout error:", error);
+            logError("Logout error:", error);
             Alert.alert("오류", "로그아웃 중 문제가 발생했습니다.");
           }
         } 
@@ -174,69 +195,74 @@ export default function MyScreen() {
 
   const streakCount = profile.streakCount || 0;
   const tierInfo = getUserTier(streakCount);
+  const nickColor = equippedNickEffect ? getNickColor(equippedNickEffect) : null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView>
         {/* Profile Section */}
         <View style={styles.profileSection}>
-        <TouchableOpacity onPress={pickImage} disabled={uploading}>
-          <View style={styles.imageContainer}>
-            <Avatar 
-              profileImage={profile.profileImage} 
-              nickname={profile.nickname}
-              size={100} 
-              streakCount={profile.streakCount || 0}
-            />
-            {uploading && (
-              <View style={[StyleSheet.absoluteFill, styles.uploadingOverlay]}>
-                <ActivityIndicator color={theme.colors.accent} />
+          <TouchableOpacity onPress={pickImage} disabled={uploading}>
+            <View style={styles.imageContainer}>
+              <Avatar
+                profileImage={profile.profileImage}
+                nickname={profile.nickname}
+                size={100}
+                streakCount={profile.streakCount || 0}
+                equippedBorder={equippedBorder}
+              />
+              {uploading && (
+                <View style={[StyleSheet.absoluteFill, styles.uploadingOverlay]}>
+                  <ActivityIndicator color={theme.colors.accent} />
+                </View>
+              )}
+              <View style={styles.editIconBadge}>
+                <Ionicons name="camera" size={12} color="#fff" />
               </View>
-            )}
-            <View style={styles.editIconBadge}>
-              <Ionicons name="camera" size={12} color="#fff" />
             </View>
+          </TouchableOpacity>
+
+          <View style={styles.infoContainer}>
+            {editingNickname ? (
+              <TextInput
+                style={styles.nicknameInput}
+                value={nicknameInput}
+                onChangeText={setNicknameInput}
+                onBlur={handleNicknameSubmit}
+                onSubmitEditing={handleNicknameSubmit}
+                autoFocus
+              />
+            ) : (
+              <TouchableOpacity onPress={() => setEditingNickname(true)} style={styles.row}>
+                <Text style={[styles.nickname, nickColor ? { color: nickColor } : null]}>
+                  {profile.nickname}
+                </Text>
+                <TierBadge streakCount={profile.streakCount} size="md" />
+                <Ionicons name="pencil" size={16} color={theme.colors.textSecondary} style={styles.editIcon} />
+              </TouchableOpacity>
+            )}
+
+            {editingStatus ? (
+              <TextInput
+                style={styles.statusInput}
+                value={statusInput}
+                onChangeText={setStatusInput}
+                onBlur={handleStatusSubmit}
+                onSubmitEditing={handleStatusSubmit}
+                placeholder="상태 메시지를 입력하세요"
+                placeholderTextColor={theme.colors.textMuted}
+                autoFocus
+              />
+            ) : (
+              <TouchableOpacity onPress={() => setEditingStatus(true)} style={styles.row}>
+                <Text style={styles.statusMessage}>
+                  {profile.statusMessage || '상태 메시지가 없습니다.'}
+                </Text>
+                <Ionicons name="pencil" size={14} color={theme.colors.textSecondary} style={styles.editIcon} />
+              </TouchableOpacity>
+            )}
           </View>
-        </TouchableOpacity>
-
-        <View style={styles.infoContainer}>
-          {editingNickname ? (
-            <TextInput
-              style={styles.nicknameInput}
-              value={nicknameInput}
-              onChangeText={setNicknameInput}
-              onBlur={handleNicknameSubmit}
-              onSubmitEditing={handleNicknameSubmit}
-              autoFocus
-            />
-          ) : (
-            <TouchableOpacity onPress={() => setEditingNickname(true)} style={styles.row}>
-              <Text style={styles.nickname}>{profile.nickname}</Text>
-              <Ionicons name="pencil" size={16} color={theme.colors.textSecondary} style={styles.editIcon} />
-            </TouchableOpacity>
-          )}
-
-          {editingStatus ? (
-            <TextInput
-              style={styles.statusInput}
-              value={statusInput}
-              onChangeText={setStatusInput}
-              onBlur={handleStatusSubmit}
-              onSubmitEditing={handleStatusSubmit}
-              placeholder="상태 메시지를 입력하세요"
-              placeholderTextColor={theme.colors.textMuted}
-              autoFocus
-            />
-          ) : (
-            <TouchableOpacity onPress={() => setEditingStatus(true)} style={styles.row}>
-              <Text style={styles.statusMessage}>
-                {profile.statusMessage || '상태 메시지가 없습니다.'}
-              </Text>
-              <Ionicons name="pencil" size={14} color={theme.colors.textSecondary} style={styles.editIcon} />
-            </TouchableOpacity>
-          )}
         </View>
-      </View>
 
       {/* Streak & Tier Section */}
       <View style={styles.section}>
@@ -265,6 +291,18 @@ export default function MyScreen() {
                 다음 등급 '{tierInfo.nextTierLabel}'까지 {tierInfo.nextTierDays}일 남았어요!
               </Text>
             )}
+          </View>
+
+          {/* 별조각 잔액 */}
+          <View style={styles.pointsRow}>
+            <View>
+              <Text style={styles.streakTitle}>내 별조각</Text>
+              <View style={styles.pointsValueRow}>
+                <StarPieceIcon size={20} />
+                <Text style={styles.pointsValue}>{points}</Text>
+              </View>
+            </View>
+            <Text style={styles.shopHint}>하단 상점 탭에서{'\n'}충전·꾸미기 가능</Text>
           </View>
         </View>
       </View>
@@ -445,11 +483,35 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
+    marginBottom: 16,
   },
   nextTierText: {
     fontSize: 14,
     color: theme.colors.textSecondary,
     fontWeight: '500',
+  },
+  pointsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 4,
+  },
+  pointsValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  pointsValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
+  shopHint: {
+    fontSize: 12,
+    color: theme.colors.textMuted,
+    textAlign: 'right',
+    lineHeight: 18,
   },
   settingItem: {
     flexDirection: 'row',

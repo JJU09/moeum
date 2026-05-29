@@ -9,31 +9,80 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { theme } from '../constants/theme';
+import CrownBadge from './CrownBadge';
 
 interface QuestionCardProps {
   questionText?: string | null;
   title?: string;
+  isCustom?: boolean;
+  winnerNickname?: string;
 }
 
-export const QuestionCard: React.FC<QuestionCardProps> = ({ questionText, title = "오늘의 질문" }) => {
+export const QuestionCard: React.FC<QuestionCardProps> = ({
+  questionText,
+  title = "오늘의 질문",
+  isCustom = false,
+  winnerNickname,
+}) => {
   const translateY = useSharedValue(40);
   const opacity = useSharedValue(0);
 
   useEffect(() => {
-    translateY.value = withTiming(0, {
-      duration: 600,
-      easing: Easing.out(Easing.cubic),
-    });
-    opacity.value = withTiming(1, {
-      duration: 600,
-      easing: Easing.out(Easing.cubic),
-    });
+    translateY.value = withTiming(0, { duration: 600, easing: Easing.out(Easing.cubic) });
+    opacity.value = withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) });
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
     opacity: opacity.value,
   }));
+
+  const customTitle = isCustom && winnerNickname
+    ? `${winnerNickname}님이 낸 오늘의 질문 ✨`
+    : title;
+
+  const renderSubtitle = () => {
+    if (isCustom) {
+      return (
+        <View style={styles.customTitleRow}>
+          <CrownBadge size={20} />
+          <Text style={styles.customSubtitle}>{customTitle}</Text>
+        </View>
+      );
+    }
+
+    if (Platform.OS === 'web') {
+      return (
+        <Text style={[styles.subtitle, {
+          backgroundImage: 'linear-gradient(to right, #7FFFD4, #FFFFFF)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          color: 'transparent',
+        }] as any}>
+          {title}
+        </Text>
+      );
+    }
+
+    return (
+      <MaskedView
+        style={styles.maskedView}
+        maskElement={
+          <View style={styles.maskContainer}>
+            <Text style={styles.subtitle}>{title}</Text>
+          </View>
+        }
+      >
+        <LinearGradient
+          colors={['#7FFFD4', '#FFFFFF']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.gradientFill}
+        />
+      </MaskedView>
+    );
+  };
 
   return (
     <Animated.View style={animatedStyle}>
@@ -43,33 +92,7 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({ questionText, title 
         end={{ x: 1, y: 1 }}
         style={styles.container}
       >
-        {Platform.OS === 'web' ? (
-        <Text style={[styles.subtitle, {
-          backgroundImage: 'linear-gradient(to right, #7FFFD4, #FFFFFF)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          color: 'transparent', // Fallback for some browsers
-        }] as any}>
-          {title}
-        </Text>
-      ) : (
-        <MaskedView
-          style={styles.maskedView}
-          maskElement={
-            <View style={styles.maskContainer}>
-              <Text style={styles.subtitle}>{title}</Text>
-            </View>
-          }
-        >
-          <LinearGradient
-            colors={['#7FFFD4', '#FFFFFF']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.gradientFill}
-          />
-        </MaskedView>
-      )}
+        {renderSubtitle()}
         <Text style={styles.text}>
           {questionText ? questionText : "오늘의 질문을 준비 중이에요 🌙"}
         </Text>
@@ -88,7 +111,7 @@ const styles = StyleSheet.create({
     minHeight: 160,
   },
   maskedView: {
-    height: 24, // Enough height for the subtitle
+    height: 24,
     width: '100%',
     marginBottom: 12,
   },
@@ -104,6 +127,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     marginBottom: Platform.OS === 'web' ? 12 : 0,
+  },
+  customTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 6,
+  },
+  customSubtitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#7FFFD4',
   },
   text: {
     fontSize: 20,

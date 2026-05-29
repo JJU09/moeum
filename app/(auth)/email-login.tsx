@@ -4,6 +4,7 @@ import { useRouter, Link } from 'expo-router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { theme } from '../../constants/theme';
+import { logError } from '../../lib/logger';
 
 export default function EmailLoginScreen() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function EmailLoginScreen() {
       await signInWithEmailAndPassword(auth, email, password);
       // 로그인이 성공하면 _layout.tsx의 리다이렉트 로직에 의해 자동으로 처리됨
     } catch (error: any) {
-      console.error(error);
+      logError(error);
       let msg = '로그인 중 오류가 발생했습니다.';
       if (error.code === 'auth/invalid-credential') {
         msg = '이메일 또는 비밀번호가 올바르지 않습니다.';
