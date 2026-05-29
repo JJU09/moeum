@@ -55,6 +55,8 @@ export const submitAnswer = async (
     // 장착 이펙트 스냅샷 — 피드에서 바로 표시하기 위해 포함
     equippedNickEffect: userData?.equippedNickEffect || null,
     equippedBorder: userData?.equippedBorder || null,
+    equippedFeedBorder: userData?.equippedFeedBorder || null,
+    equippedFeedBg: userData?.equippedFeedBg || null,
     content,
     reactions: {
       "❤️": [],

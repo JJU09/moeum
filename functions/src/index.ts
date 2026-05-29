@@ -419,6 +419,12 @@ export const onAnswerCreatedUpdateStreak = onDocumentCreated(
       if (newStreak >= 30 && !currentBadges.includes('streak_30')) {
         newBadges.push('streak_30');
       }
+      // 등급 업적 테두리 해금 뱃지 (영구)
+      if (newStreak >= 3   && !currentBadges.includes('tier_firefly'))   newBadges.push('tier_firefly');
+      if (newStreak >= 7   && !currentBadges.includes('tier_dew'))       newBadges.push('tier_dew');
+      if (newStreak >= 14  && !currentBadges.includes('tier_starlight')) newBadges.push('tier_starlight');
+      if (newStreak >= 30  && !currentBadges.includes('tier_aurora'))    newBadges.push('tier_aurora');
+      if (newStreak >= 100 && !currentBadges.includes('tier_dawn'))      newBadges.push('tier_dawn');
       if (newBadges.length > 0) {
         updateFields.badges = admin.firestore.FieldValue.arrayUnion(...newBadges);
       }

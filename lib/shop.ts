@@ -8,7 +8,11 @@ export const purchaseShopItem = (itemId: string) => {
   return httpsCallable(functions, 'purchaseShopItem')({ itemId });
 };
 
-export type EquipSlot = 'equippedBorder' | 'equippedBg' | 'equippedNickEffect';
+export type EquipSlot =
+  | 'equippedBorder'      // 프로필 아이콘 테두리
+  | 'equippedFeedBorder'  // 피드 카드 테두리
+  | 'equippedFeedBg'      // 피드 카드 배경
+  | 'equippedNickEffect'; // 닉네임 이펙트
 
 /** 아이템 장착 */
 export const equipItem = (userId: string, slot: EquipSlot, itemId: string) =>

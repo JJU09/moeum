@@ -8,8 +8,11 @@ import {
   Alert,
   ScrollView,
   Platform,
+  Animated,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient as SvgGradient, Stop, Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -37,6 +40,10 @@ import {
   SHOP_ITEMS,
   type ShopItem,
 } from '../../constants/shopItems';
+import {
+  TIER_ACHIEVEMENT_ITEMS,
+  type AchievementItem,
+} from '../../constants/achievements';
 
 // ─── IAP 상품 설정 ────────────────────────────────────────────────────────────
 
@@ -56,9 +63,10 @@ const IAP_PRODUCTS: IAPProductConfig[] = [
 
 // ─── 아이템 카테고리별 필터 ────────────────────────────────────────────────────
 
-const BORDER_ITEMS = SHOP_ITEMS.filter((i) => i.category === 'border');
-const BG_ITEMS     = SHOP_ITEMS.filter((i) => i.category === 'bg');
-const NICK_ITEMS   = SHOP_ITEMS.filter((i) => i.category === 'nick');
+const AVATAR_BORDER_ITEMS = SHOP_ITEMS.filter((i) => i.category === 'avatar_border');
+const FEED_BORDER_ITEMS   = SHOP_ITEMS.filter((i) => i.category === 'feed_border');
+const FEED_BG_ITEMS       = SHOP_ITEMS.filter((i) => i.category === 'feed_bg');
+const NICK_ITEMS          = SHOP_ITEMS.filter((i) => i.category === 'nick');
 
 // ─── 메인 컴포넌트 ─────────────────────────────────────────────────────────────
 
@@ -76,8 +84,11 @@ export default function ShopScreen() {
   const [points, setPoints] = useState(0);
   const [ownedItems, setOwnedItems] = useState<string[]>([]);
   const [equippedBorder, setEquippedBorder] = useState<string | undefined>();
-  const [equippedBg, setEquippedBg] = useState<string | undefined>();
+  const [equippedFeedBorder, setEquippedFeedBorder] = useState<string | undefined>();
+  const [equippedFeedBg, setEquippedFeedBg] = useState<string | undefined>();
   const [equippedNickEffect, setEquippedNickEffect] = useState<string | undefined>();
+  const [badges, setBadges] = useState<string[]>([]);
+  const [streakCount, setStreakCount] = useState(0);
 
   // IAP 상태
   const [storeProducts, setStoreProducts] = useState<Product[]>([]);
@@ -98,8 +109,11 @@ export default function ShopScreen() {
         setPoints(data?.points ?? 0);
         setOwnedItems(data?.ownedItems ?? []);
         setEquippedBorder(data?.equippedBorder ?? undefined);
-        setEquippedBg(data?.equippedBg ?? undefined);
+        setEquippedFeedBorder(data?.equippedFeedBorder ?? undefined);
+        setEquippedFeedBg(data?.equippedFeedBg ?? undefined);
         setEquippedNickEffect(data?.equippedNickEffect ?? undefined);
+        setBadges(data?.badges ?? []);
+        setStreakCount(data?.streakCount ?? 0);
       }
     });
   }, [user]);
@@ -231,15 +245,17 @@ export default function ShopScreen() {
   };
 
   const slotForCategory = (category: ShopItem['category']): EquipSlot | null => {
-    if (category === 'border') return 'equippedBorder';
-    if (category === 'bg') return 'equippedBg';
-    if (category === 'nick') return 'equippedNickEffect';
+    if (category === 'avatar_border') return 'equippedBorder';
+    if (category === 'feed_border')   return 'equippedFeedBorder';
+    if (category === 'feed_bg')       return 'equippedFeedBg';
+    if (category === 'nick')          return 'equippedNickEffect';
     return null;
   };
 
   const equippedValueForSlot = (slot: EquipSlot) => {
-    if (slot === 'equippedBorder') return equippedBorder;
-    if (slot === 'equippedBg') return equippedBg;
+    if (slot === 'equippedBorder')     return equippedBorder;
+    if (slot === 'equippedFeedBorder') return equippedFeedBorder;
+    if (slot === 'equippedFeedBg')     return equippedFeedBg;
     if (slot === 'equippedNickEffect') return equippedNickEffect;
     return undefined;
   };
@@ -271,18 +287,34 @@ export default function ShopScreen() {
 
     // 미리보기 렌더링
     let preview: React.ReactNode;
-    if (item.category === 'border' && item.glowColors) {
+    if (item.category === 'avatar_border' && item.avatarBorderColors) {
+      // 원형 그라데이션 링 미리보기
+      preview = (
+        <View style={styles.borderPreviewOuter}>
+          <LinearGradient
+            colors={item.avatarBorderColors as unknown as readonly [string, string, ...string[]]}
+            style={StyleSheet.absoluteFill}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
+          {/* JSX 순서상 LinearGradient 다음 → 위에 렌더링 보장 */}
+          <View style={styles.borderPreviewInner} />
+        </View>
+      );
+    } else if (item.category === 'feed_border' && item.feedBorderColor) {
+      // 색상 테두리 직사각형 미리보기
+      preview = (
+        <View style={[styles.feedBorderPreview, { borderColor: item.feedBorderColor }]} />
+      );
+    } else if (item.category === 'feed_bg' && item.feedBgColors) {
+      // 그라데이션 직사각형 미리보기
       preview = (
         <LinearGradient
-          colors={item.glowColors}
-          style={styles.borderPreview}
-        >
-          <View style={styles.borderPreviewInner} />
-        </LinearGradient>
-      );
-    } else if (item.category === 'bg' && item.bgColors) {
-      preview = (
-        <LinearGradient colors={item.bgColors} style={styles.bgPreview} />
+          colors={item.feedBgColors as unknown as readonly [string, string, ...string[]]}
+          style={styles.bgPreview}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
       );
     } else if (item.category === 'nick' && item.nickColor) {
       preview = (
@@ -335,6 +367,109 @@ export default function ShopScreen() {
     );
   };
 
+
+  // ─── 업적 테두리 미리보기 (글로우 + 펄스 애니메이션) ──────────────────────────
+
+  const AchievementBorderPreview: React.FC<{
+    colors: [string, string];
+    isUnlocked: boolean;
+  }> = React.memo(({ colors, isUnlocked }) => {
+    const pulseAnim = React.useRef(new Animated.Value(0)).current;
+
+    // useNativeDriver: false — JS 스레드 애니메이션으로 하드웨어 레이어 생성 방지
+    // native driver + transform은 독립 RenderNode를 만들어 opacity 오프스크린 버퍼 안에서
+    // z-order를 역전시킴 (locked 상태에서 헤일로가 링 위로 올라오는 버그)
+    React.useEffect(() => {
+      if (!isUnlocked) { pulseAnim.setValue(0); return; }
+      const anim = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1400,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: false,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0,
+            duration: 1400,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: false,
+          }),
+        ])
+      );
+      anim.start();
+      return () => anim.stop();
+    }, [isUnlocked, pulseAnim]);
+
+    const glowOpacity = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.65] });
+    const glowScale  = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.25] });
+
+    return (
+      <View style={[styles.previewArea, !isUnlocked && { opacity: 0.35 }]}>
+        {/* 글로우 헤일로 — JSX 첫번째 → SVG ring 뒤에 렌더링 */}
+        <Animated.View
+          style={[
+            styles.achievementGlowHalo,
+            {
+              backgroundColor: colors[0] + '80',
+              opacity: glowOpacity,
+              transform: [{ scale: glowScale }],
+            },
+          ]}
+        />
+        {/* SVG 그라데이션 링 — View z-order 의존 없음
+            SVG paint-order로 hollow 보장: 외부원(gradient) → 내부원(dark) 순서로 그려짐 */}
+        <Svg width={54} height={54}>
+          <Defs>
+            <SvgGradient id="achRingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor={colors[0]} />
+              <Stop offset="100%" stopColor={colors[1]} />
+            </SvgGradient>
+          </Defs>
+          {/* 외부 그라데이션 원 */}
+          <Circle cx={27} cy={27} r={27} fill="url(#achRingGrad)" />
+          {/* 내부 어두운 원 — SVG paint-order상 항상 위 → hollow 효과 */}
+          <Circle cx={27} cy={27} r={24} fill={theme.colors.surface} />
+        </Svg>
+      </View>
+    );
+  });
+
+  // ─── 업적 테두리 카드 ─────────────────────────────────────────────────────────
+
+  const renderAchievementCard = (item: AchievementItem) => {
+    const isUnlocked = streakCount >= item.requiredStreakDays;
+    const isEquipped = equippedBorder === item.id;
+
+    return (
+      <View key={item.id} style={[styles.cosmeticCard, isEquipped && styles.cosmeticCardEquipped]}>
+        <AchievementBorderPreview
+          colors={item.avatarBorderColors}
+          isUnlocked={isUnlocked}
+        />
+
+        <Text style={[styles.cosmeticLabel, !isUnlocked && { color: theme.colors.textMuted }]}>
+          {item.label}
+        </Text>
+
+        {isUnlocked ? (
+          <TouchableOpacity
+            style={[styles.equipBtn, isEquipped && styles.equipBtnActive]}
+            onPress={() => handleEquip({ id: item.id, category: 'avatar_border' } as ShopItem)}
+          >
+            <Text style={[styles.equipBtnText, isEquipped && styles.equipBtnTextActive]}>
+              {isEquipped ? '장착 중 ✓' : '장착'}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.lockedBadge}>
+            <Ionicons name="lock-closed" size={10} color={theme.colors.textMuted} />
+            <Text style={styles.lockedText}>{item.requiredStreakDays}일 연속 답변</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   // ─── 렌더링 ────────────────────────────────────────────────────────────────────
 
@@ -394,18 +529,35 @@ export default function ShopScreen() {
 
         <View style={styles.divider} />
 
-        {/* ── 섹션 2: 프로필 꾸미기 ── */}
-        <Text style={styles.sectionTitle}>프로필 꾸미기</Text>
-        <Text style={styles.sectionDesc}>구매한 아이템은 영구적으로 보유합니다.</Text>
-
-        <Text style={styles.subSectionTitle}>글로우 테두리</Text>
+        {/* ── 섹션 2: 업적 테두리 ── */}
+        <Text style={styles.sectionTitle}>업적 테두리</Text>
+        <Text style={styles.sectionDesc}>
+          연속 답변 달성 시 영구 해금됩니다.{'\n'}
+          해금된 테두리는 포인트 없이 자유롭게 장착할 수 있어요.
+        </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hScroll} contentContainerStyle={styles.hScrollContent}>
-          {BORDER_ITEMS.map(renderCosmeticCard)}
+          {TIER_ACHIEVEMENT_ITEMS.map(renderAchievementCard)}
         </ScrollView>
 
-        <Text style={styles.subSectionTitle}>프로필 배경</Text>
+        <View style={styles.divider} />
+
+        {/* ── 섹션 3: 꾸미기 ── */}
+        <Text style={styles.sectionTitle}>꾸미기</Text>
+        <Text style={styles.sectionDesc}>구매한 아이템은 영구적으로 보유합니다.</Text>
+
+        <Text style={styles.subSectionTitle}>프로필 아이콘 테두리</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hScroll} contentContainerStyle={styles.hScrollContent}>
-          {BG_ITEMS.map(renderCosmeticCard)}
+          {AVATAR_BORDER_ITEMS.map(renderCosmeticCard)}
+        </ScrollView>
+
+        <Text style={styles.subSectionTitle}>피드 카드 테두리</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hScroll} contentContainerStyle={styles.hScrollContent}>
+          {FEED_BORDER_ITEMS.map(renderCosmeticCard)}
+        </ScrollView>
+
+        <Text style={styles.subSectionTitle}>피드 카드 배경</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hScroll} contentContainerStyle={styles.hScrollContent}>
+          {FEED_BG_ITEMS.map(renderCosmeticCard)}
         </ScrollView>
 
         <Text style={styles.subSectionTitle}>닉네임 이펙트</Text>
@@ -594,6 +746,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
+  // 글로우 헤일로 — previewArea(60×60) 중앙, scale로 ring 외부로 확장
+  achievementGlowHalo: {
+    position: 'absolute',
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    top: 3,   // (60 - 54) / 2
+    left: 3,
+  },
   previewArea: {
     width: 60,
     height: 60,
@@ -604,19 +765,31 @@ const styles = StyleSheet.create({
   },
 
   // 테두리 미리보기 — 원형 그라데이션 링
-  borderPreview: {
+  // Android: overflow:hidden이 있는 View는 sibling보다 위에 렌더링됨
+  // → overflow:hidden을 부모 하나에만 두고 자식 순서(LinearGradient → 내부원)로 z-order 보장
+  borderPreviewOuter: {
     width: 54,
     height: 54,
     borderRadius: 27,
-    padding: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: 'hidden', // 원형 clip은 여기서만
   },
   borderPreviewInner: {
+    // 일반 상점 테두리용 (Animated.View 없는 환경, z-order 정상)
+    position: 'absolute',
+    top: 3,
+    left: 3,
     width: 48,
     height: 48,
     borderRadius: 24,
     backgroundColor: theme.colors.surface,
+  },
+  // 피드 테두리 미리보기 — 색상 테두리 직사각형
+  feedBorderPreview: {
+    width: 54,
+    height: 54,
+    borderRadius: 10,
+    borderWidth: 3,
+    backgroundColor: 'transparent',
   },
 
   // 배경 미리보기
@@ -688,6 +861,20 @@ const styles = StyleSheet.create({
   },
   buyItemBtnTextDisabled: {
     color: theme.colors.textMuted,
+  },
+
+  // 잠금 표시
+  lockedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    paddingVertical: 7,
+  },
+  lockedText: {
+    fontSize: 10,
+    color: theme.colors.textMuted,
+    fontWeight: '500',
   },
 
   // 안내

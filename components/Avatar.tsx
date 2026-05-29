@@ -1,9 +1,10 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View, Platform } from 'react-native';
+import { Image, StyleSheet, Text, View, Platform, Animated, Easing } from 'react-native';
 import { theme } from '../constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getUserTier } from '../lib/badge';
-import { getBorderGlowColors } from '../constants/shopItems';
+import { getAvatarBorderColors } from '../constants/shopItems';
+import { TIER_ACHIEVEMENT_MAP } from '../constants/achievements';
 
 interface AvatarProps {
   profileImage?: string | null;
@@ -25,7 +26,26 @@ export const Avatar: React.FC<AvatarProps> = ({
   const defaultText = nickname && nickname.trim().length > 0 ? nickname.trim()[0] : '익';
 
   // 커스텀 테두리가 있으면 등급 글로우 대신 커스텀 색상 사용
-  const customBorderColors = equippedBorder ? getBorderGlowColors(equippedBorder) : null;
+  const customBorderColors = equippedBorder ? getAvatarBorderColors(equippedBorder) : null;
+
+  // 업적 테두리 여부 — achievements 카탈로그에서 animated 플래그 확인
+  const isAnimatedBorder = equippedBorder ? (TIER_ACHIEVEMENT_MAP[equippedBorder]?.animated ?? false) : false;
+
+  // 펄스 애니메이션 (업적 테두리 전용)
+  const pulseAnim = React.useRef(new Animated.Value(0)).current;
+  React.useEffect(() => {
+    if (!isAnimatedBorder) { pulseAnim.setValue(0); return; }
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [isAnimatedBorder, pulseAnim]);
+  const pulseScale   = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [1.0, 1.06] });
+  const pulseOpacity = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.75, 1.0] });
 
   const streak = streakCount ?? 0;
   const tierInfo = getUserTier(streak);
@@ -100,7 +120,7 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   // 커스텀 테두리: 그라데이션 래퍼로 렌더링
   if (customBorderColors) {
-    return (
+    const borderEl = (
       <LinearGradient
         colors={customBorderColors as [string, string]}
         style={[
@@ -118,6 +138,16 @@ export const Avatar: React.FC<AvatarProps> = ({
         {renderContent()}
       </LinearGradient>
     );
+
+    // 업적 테두리: 펄스 scale+opacity 래퍼 추가
+    if (isAnimatedBorder) {
+      return (
+        <Animated.View style={{ transform: [{ scale: pulseScale }], opacity: pulseOpacity }}>
+          {borderEl}
+        </Animated.View>
+      );
+    }
+    return borderEl;
   }
 
   if (tierInfo.isGradient && tierInfo.gradientColors) {

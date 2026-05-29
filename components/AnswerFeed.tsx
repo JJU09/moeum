@@ -11,7 +11,9 @@ import Animated, {
 import { theme } from '../constants/theme';
 import { toggleReaction, updateAnswer } from '../lib/answer';
 import { Avatar } from './Avatar';
-import { getNickColor } from '../constants/shopItems';
+import { getNickColor, getFeedBorderColor, getFeedBgColors } from '../constants/shopItems';
+import { LinearGradient } from 'expo-linear-gradient';
+import { TierBadge } from './TierBadge';
 import { Ionicons } from '@expo/vector-icons';
 import { Answer, Comment } from '../types';
 import { addComment, getComments } from '../lib/comment';
@@ -139,7 +141,10 @@ const AnimatedCard = React.memo(({
             />
           </View>
             <View>
-              <Text style={styles.nickname}>{item.nickname || item.userProfile?.nickname || '익명'}</Text>
+              <View style={styles.nicknameRow}>
+                <Text style={styles.nickname}>{item.nickname || item.userProfile?.nickname || '익명'}</Text>
+                <TierBadge streakCount={item.userProfile?.streakCount ?? item.streakCount} size="sm" />
+              </View>
               <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
             </View>
           </View>
@@ -201,8 +206,28 @@ const AnimatedCard = React.memo(({
     );
   }
 
+  const feedBorderColor = getFeedBorderColor(
+    item.equippedFeedBorder || item.userProfile?.equippedFeedBorder
+  );
+  const feedBgColors = getFeedBgColors(
+    item.equippedFeedBg || item.userProfile?.equippedFeedBg
+  );
+
   return (
-    <Animated.View style={[styles.card, isMe && styles.myCard, animatedStyle]}>
+    <Animated.View style={[
+      styles.card,
+      isMe && styles.myCard,
+      feedBorderColor ? { borderColor: feedBorderColor, borderWidth: 2 } : null,
+      animatedStyle,
+    ]}>
+      {feedBgColors ? (
+        <LinearGradient
+          colors={feedBgColors as unknown as readonly [string, string, ...string[]]}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+      ) : null}
       <View style={styles.header}>
         <View style={styles.userInfo}>
           <View style={styles.avatarContainer}>
@@ -215,18 +240,24 @@ const AnimatedCard = React.memo(({
             />
           </View>
           <View>
-            <Text
-              style={[
-                styles.nickname,
-                getNickStyle(item.equippedNickEffect || item.userProfile?.equippedNickEffect),
-              ]}
-            >
-              {item.nickname || item.userProfile?.nickname || '익명'}
-            </Text>
+            <View style={styles.nicknameRow}>
+              <Text
+                style={[
+                  styles.nickname,
+                  getNickStyle(item.equippedNickEffect || item.userProfile?.equippedNickEffect),
+                ]}
+              >
+                {item.nickname || item.userProfile?.nickname || '익명'}
+              </Text>
+              <TierBadge
+                streakCount={item.userProfile?.streakCount ?? item.streakCount}
+                size="sm"
+              />
+            </View>
             <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
           </View>
         </View>
-        
+
         {isMe && !isReadOnly && (
           <View style={styles.actionButtons}>
             <TouchableOpacity onPress={() => {
@@ -238,9 +269,9 @@ const AnimatedCard = React.memo(({
           </View>
         )}
       </View>
-      
+
       <Text style={styles.content}>{item.content.replace(/\n{3,}/g, '\n\n')}</Text>
-      
+
       {renderReactionButtons(item)}
     </Animated.View>
   );
@@ -500,6 +531,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    overflow: 'hidden',
   },
   myCard: {
     backgroundColor: theme.colors.surfaceLight,
@@ -517,6 +549,11 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     marginRight: 12,
+  },
+  nicknameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   nickname: {
     fontSize: 15,

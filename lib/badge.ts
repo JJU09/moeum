@@ -1,3 +1,12 @@
+/** 등급 해금 연속 출석 임계값 */
+export const TIER_THRESHOLDS = {
+  FIREFLY:   3,
+  DEW:       7,
+  STARLIGHT: 14,
+  AURORA:    30,
+  DAWN:      100,
+} as const;
+
 export interface TierInfo {
   tier: string;
   color: string;
