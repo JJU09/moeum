@@ -3,6 +3,7 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onDocumentUpdated, onDocumentCreated } from "firebase-functions/v2/firestore";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { google } from "googleapis";
+import { SERVER_SHOP_ITEMS } from "./shopItems";
 
 admin.initializeApp();
 
@@ -182,7 +183,7 @@ export const settleAuction = onSchedule(
           .collection("auctions").doc(dateStr);
         const auctionSnap = await auctionRef.get();
 
-        if (!auctionSnap.exists || auctionSnap.data()?.status !== "open") return;
+        if (auctionSnap.exists && auctionSnap.data()?.status === "closed") return;
 
         const bidsSnap = await auctionRef.collection("bids").get();
 
@@ -346,10 +347,125 @@ export const onAnswerCreatedGivePoints = onDocumentCreated(
       if (userData.lastPointDate === todayKST) return;
 
       transaction.update(userRef, {
-        points: admin.firestore.FieldValue.increment(10),
+        points: admin.firestore.FieldValue.increment(5),
         lastPointDate: todayKST,
       });
     });
+  }
+);
+
+// FN-05: 답변 작성 시 streak 갱신 + 쉴드 소비 (서버 시간 기준 — 클라이언트 시간 변조 방지)
+export const onAnswerCreatedUpdateStreak = onDocumentCreated(
+  "answers/{answerId}",
+  async (event) => {
+    const db = admin.firestore();
+    const data = event.data?.data();
+    if (!data) return;
+
+    const userId: string = data.userId;
+    if (!userId) return;
+
+    // 서버 타임스탬프 기준 KST 오늘 날짜 계산
+    const serverTime: Date = event.data!.createTime.toDate();
+    const kstTime = new Date(serverTime.getTime() + 9 * 60 * 60 * 1000);
+    const todayKST = kstTime.toISOString().split('T')[0]!;
+
+    const userRef = db.collection("users").doc(userId);
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      if (!snap.exists) return;
+
+      const userData = snap.data()!;
+      const lastDate: string | undefined = userData.lastAnsweredDate;
+
+      // 오늘 이미 처리됨
+      if (lastDate === todayKST) return;
+
+      const currentStreak: number = userData.streakCount ?? 0;
+
+      const updateFields: Record<string, unknown> = { lastAnsweredDate: todayKST };
+      let newStreak: number;
+
+      if (!lastDate) {
+        newStreak = 1;
+      } else {
+        // 수동 diffDays 계산 (date-fns 없이)
+        const msPerDay = 24 * 60 * 60 * 1000;
+        const d1 = new Date(lastDate + 'T00:00:00Z').getTime();
+        const d2 = new Date(todayKST + 'T00:00:00Z').getTime();
+        const diffDays = Math.round((d2 - d1) / msPerDay);
+
+        if (diffDays === 1) {
+          newStreak = currentStreak + 1;
+        } else {
+          newStreak = 1;
+        }
+      }
+
+      updateFields.streakCount = newStreak;
+
+      // 뱃지 부여
+      const currentBadges: string[] = userData.badges ?? [];
+      const newBadges: string[] = [];
+      // 이른 아침 답변 (서버 KST 기준)
+      const kstHour = kstTime.getHours();
+      if (kstHour >= 7 && kstHour < 11 && !currentBadges.includes('early_bird')) {
+        newBadges.push('early_bird');
+      }
+      if (newStreak >= 7 && !currentBadges.includes('streak_7')) {
+        newBadges.push('streak_7');
+      }
+      if (newStreak >= 30 && !currentBadges.includes('streak_30')) {
+        newBadges.push('streak_30');
+      }
+      if (newBadges.length > 0) {
+        updateFields.badges = admin.firestore.FieldValue.arrayUnion(...newBadges);
+      }
+
+      tx.update(userRef, updateFields);
+    });
+  }
+);
+
+// FN-06: 상점 아이템 구매 — 별조각 차감 + 아이템/쉴드 지급
+export const purchaseShopItem = onCall(
+  { region: "asia-northeast3" },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
+
+    const { itemId } = request.data as { itemId: string };
+    const item = SERVER_SHOP_ITEMS[itemId];
+    if (!item) throw new HttpsError("not-found", "존재하지 않는 아이템입니다.");
+
+    const db = admin.firestore();
+    const userRef = db.collection("users").doc(uid);
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(userRef);
+      if (!snap.exists) throw new HttpsError("not-found", "사용자를 찾을 수 없습니다.");
+
+      const userData = snap.data()!;
+      const currentPoints: number = userData.points ?? 0;
+
+      if (currentPoints < item.price) {
+        throw new HttpsError("failed-precondition", "별조각이 부족합니다.");
+      }
+
+      // 중복 구매 방지 (모든 아이템 영구 소유)
+      const owned: string[] = userData.ownedItems ?? [];
+      if (owned.includes(itemId)) {
+        throw new HttpsError("already-exists", "이미 보유한 아이템입니다.");
+      }
+
+      tx.update(userRef, {
+        points: admin.firestore.FieldValue.increment(-item.price),
+        ownedItems: admin.firestore.FieldValue.arrayUnion(itemId),
+      });
+    });
+
+    return { success: true };
   }
 );
 

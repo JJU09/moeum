@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, Modal, TouchableWithoutFeedback } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, Modal, TouchableWithoutFeedback, StyleProp, TextStyle } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -11,6 +11,7 @@ import Animated, {
 import { theme } from '../constants/theme';
 import { toggleReaction, updateAnswer } from '../lib/answer';
 import { Avatar } from './Avatar';
+import { getNickColor } from '../constants/shopItems';
 import { Ionicons } from '@expo/vector-icons';
 import { Answer, Comment } from '../types';
 import { addComment, getComments } from '../lib/comment';
@@ -26,6 +27,14 @@ interface AnswerFeedProps {
 }
 
 const EMOJIS = ['❤️', '🥹', '😂', '👏'];
+
+/** 닉네임 이펙트 아이템 ID → TextStyle 변환 */
+function getNickStyle(effectId?: string | null): StyleProp<TextStyle> {
+  if (!effectId) return null;
+  const color = getNickColor(effectId);
+  if (color) return { color };
+  return null;
+}
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -197,15 +206,23 @@ const AnimatedCard = React.memo(({
       <View style={styles.header}>
         <View style={styles.userInfo}>
           <View style={styles.avatarContainer}>
-            <Avatar 
-              profileImage={item.profileImage || item.userProfile?.profileImage} 
+            <Avatar
+              profileImage={item.profileImage || item.userProfile?.profileImage}
               nickname={item.nickname || item.userProfile?.nickname}
               streakCount={item.userProfile?.streakCount ?? item.streakCount ?? 0}
-              size={40} 
+              equippedBorder={item.equippedBorder || item.userProfile?.equippedBorder}
+              size={40}
             />
           </View>
           <View>
-            <Text style={styles.nickname}>{item.nickname || item.userProfile?.nickname || '익명'}</Text>
+            <Text
+              style={[
+                styles.nickname,
+                getNickStyle(item.equippedNickEffect || item.userProfile?.equippedNickEffect),
+              ]}
+            >
+              {item.nickname || item.userProfile?.nickname || '익명'}
+            </Text>
             <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
           </View>
         </View>

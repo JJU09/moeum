@@ -3,12 +3,18 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // 로그인한 사용자는 다른 유저 프로필 읽기 가능, 쓰기는 본인만
-    // points/lastPointDate 필드는 Cloud Functions만 수정 가능
+    // Cloud Functions 전용 필드: points, lastPointDate, ownedItems, streakCount,
+    //   lastAnsweredDate, streakShieldCount, badges — 클라이언트 직접 수정 불가
+    // 클라이언트 허용 필드: 장착 이펙트(equippedBorder, equippedBg, equippedNickEffect),
+    //   닉네임, 프로필 이미지, 상태 메시지 등 일반 프로필 정보
     match /users/{userId} {
       allow read: if request.auth != null;
       allow update: if request.auth != null
                     && request.auth.uid == userId
-                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['points', 'lastPointDate']);
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                         'points', 'lastPointDate', 'ownedItems',
+                         'streakCount', 'lastAnsweredDate', 'streakShieldCount', 'badges'
+                       ]);
       allow create: if request.auth != null && request.auth.uid == userId;
       allow delete: if request.auth != null && request.auth.uid == userId;
     }

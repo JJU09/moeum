@@ -9,6 +9,11 @@ export interface UserProfile {
   badges?: string[];
   points?: number;
   lastPointDate?: string;
+  // 상점 아이템
+  ownedItems?: string[];
+  equippedBorder?: string;
+  equippedBg?: string;
+  equippedNickEffect?: string;
 }
 
 export interface Question {
@@ -55,6 +60,8 @@ export interface Answer {
   nickname?: string;
   profileImage?: string;
   streakCount?: number;
+  equippedNickEffect?: string;
+  equippedBorder?: string;
   reactions: {
     "❤️": string[];
     "🥹": string[];
